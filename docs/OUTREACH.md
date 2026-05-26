@@ -1,37 +1,111 @@
-# Free Simplebeacon Assessment — Outreach Script
+# Simplebeacon Pre-Launch Audit — Outreach (Path 1)
 
-Use this for Phase 1 customer discovery. **Do not oversell** — the scan covers sample JSON fiction, production-path leaks, credentials, and schema drift. It does not scan arbitrary AI hallucinations in source files.
+**Product:** $499 flat · read-only repo · written report in 48h · not SaaS, not live proxy.
+
+**Public proof (use in every email):**
+
+- CLI: https://github.com/tjp420/simplebeacon  
+- Sample deliverable: https://github.com/tjp420/simplebeacon/blob/main/docs/SAMPLE_REPORT.md  
+
+Do **not** link to `CascadeProjects` — that repo is private and 404s for prospects.
 
 ---
 
 ## One-line pitch
 
-> We run a CI gate that catches mock JSON in production code paths, fiction KPIs in sample files, and credential patterns — in under a minute. Want a free scan of your repo?
+> I run a $499 pre-launch repo audit — credentials, mock paths in production code, and fiction KPIs in sample JSON — deliverable in 48 hours, read-only, no subscription.
 
 ---
 
-## Email / DM template
+## Paid audit email (copy-paste — send 5 today)
+
+**Subject options (pick one):**
+
+- Pre-launch leak check before [Client name] goes live?
+- $499 repo audit — mock data & credential scan (48h)
+- Quick question before you hand off [Project] to the client
+
+**Body:**
+
+Hi [First name],
+
+I run **pre-launch code audits** for dev agencies and founders shipping AI-assisted code.
+
+Before handoff or launch, I scan read-only for what review often misses:
+
+- API keys and token-shaped strings in source  
+- Mock/sample paths (`*-sample.json`, `data/mock/`) referenced from production code  
+- Template KPIs and demo metrics still in committed JSON  
+- Sample files that drift from your page/API specs  
+
+**How it works:** GitHub read access or a zip. I run the scan locally — nothing goes to a third-party cloud. You get a written assessment with severities and fix-first priorities within **48 hours**.
+
+**Flat fee: $499** · No subscription · No dashboard required
+
+**Sample report (redacted):** https://github.com/tjp420/simplebeacon/blob/main/docs/SAMPLE_REPORT.md  
+**Open-source scanner:** https://github.com/tjp420/simplebeacon  
+
+If [Client project / their agency name] is shipping in the next few weeks, I have one audit slot this week. Reply with repo scope (branch name is fine) and I'll send a 2-line SOW.
+
+[Trevor / Your name]  
+[Your email]  
+[Payment link or "Invoice on acceptance"]
+
+---
+
+**Follow-up (3 days, no reply):**
+
+Subject: Re: pre-launch leak check
+
+Hi [First name] — quick bump. The usual miss before client handoff: `-sample.json` and `data/mock/` still referenced from `server/` or `src/`. Scan takes minutes; fixing after launch is expensive. One slot left this week if useful.
+
+[Trevor]
+
+---
+
+## SOW line (invoice / reply to "yes")
+
+> Read-only scan of one Git repository (default branch or named release branch). Deliverable: written assessment covering credential pattern matches, production-path mock/sample references, fiction KPI patterns in configured sample paths, JSON schema drift, and CI gate recommendation. Opinion-based audit — not a guarantee of security or legal compliance. Turnaround: 2 business days after access granted. Fee: $499 USD, due on acceptance.
+
+---
+
+## Where to find 5 targets (30 min)
+
+1. **Clutch.co** → filter Web Developers, 10–49 employees, US/UK  
+2. Open **Portfolio** → pick agencies shipping dashboards / SaaS / client portals  
+3. Contact: **Founder, CTO, or Technical Director** (not generic info@ unless that's all you have)  
+4. Personalize one line: client industry or "saw you ship React/Node builds"
+
+**Good fit:** ships client code, uses AI tools, has fixtures/mock/data folders.  
+**Skip:** wants SOC 2 attestation, 24/7 SLA, or live chat DLP.
+
+---
+
+## When they say yes — run locally
+
+```bash
+cd /path/to/client-clone
+npx simplebeacon init
+npx simplebeacon scan --path . --format json --output .simplebeacon/report.json --gate
+npx simplebeacon assess --company "Client Name" --assessor "Your Name"
+npx simplebeacon compliance --format json --output .simplebeacon/compliance-result.json
+```
+
+Polish findings into the SAMPLE_REPORT format → PDF or markdown email attachment → invoice paid.
+
+---
+
+## Legacy: free discovery email (optional — use after paid path is moving)
 
 **Subject:** Free scan — mock data & fiction KPIs in [Company] repo?
 
 Hi [Name],
 
-Teams using Copilot/Cursor often end up with:
+Teams using Copilot/Cursor often end up with `*-sample.json` in production imports, inflated KPIs in committed JSON, and demo credentials that look real.
 
-- `*-sample.json` or `/mock/` paths referenced from production code
-- Inflated dashboard KPIs (`62% completion`, `47 features`) in committed JSON
-- Demo credentials that look real
+I built **Simplebeacon** (https://github.com/tjp420/simplebeacon) — a CLI that catches these in CI (`simplebeacon scan --gate`).
 
-I built **Simplebeacon** — a CLI that scans for these in CI (`simplebeacon scan --gate`).
-
-**Offer:** I'll run a free scan on your repo (read-only, no code changes) and send a short report:
-
-1. Fiction KPIs in sample/mock JSON  
-2. Production-path leaks (sample references in `server/` / `src/`)  
-3. Credential pattern matches  
-4. JSON schema drift vs your page specs  
-
-Takes ~30 seconds. If it's useful, would you consider adding the gate to PRs?
+**Offer:** I'll run a free read-only scan and send a short report. If it's useful, we can talk about a full pre-launch audit ($499) before your next client handoff.
 
 [Your name]
 
@@ -120,55 +194,4 @@ npx simplebeacon assess --company "Acme Corp" --assessor "Your Name"
 
 ---
 
-## Paid pre-launch audit — agency cold outreach ($499)
-
-**Who to target:** Web/dev agencies shipping client apps; startup founders 2–4 weeks before launch; teams that use Copilot/Cursor and hand off repos to clients.
-
-**What you sell:** One-time read-only repo audit + written deliverable (not a live proxy, not ongoing SaaS).
-
-**Deliverable:** `simplebeacon scan --gate` + `simplebeacon assess` JSON/PDF-style summary: credential patterns, mock paths in production code, fiction KPIs in sample JSON, schema drift, gate pass/fail.
-
-**Subject:** Pre-launch leak check for [Client/App name]?
-
-Hi [Name],
-
-I run **pre-launch code audits** for agencies and founders who use AI-assisted development.
-
-Before you hand a repo to a client or go live, I scan for the mistakes that slip past review:
-
-- API keys and token-shaped strings in source  
-- Mock/sample JSON paths referenced from production code  
-- Template KPIs and demo metrics still in committed data files  
-- Sample JSON that doesn't match your page/API specs  
-
-**How it works:** Read-only GitHub access (or a zip). I run the scan locally on my machine — your code never goes to a third-party cloud. You get a written assessment with severities and fix-first priorities within 48 hours.
-
-**Flat fee: $499** · No subscription · No dashboard required
-
-Sample deliverable: [SAMPLE_REPORT.md](./SAMPLE_REPORT.md) (redacted example — attach or link in email)
-
-If you're shipping [Client project] in the next few weeks, I can slot one audit this week. Reply with the repo scope (or a staging branch) and I'll send a 2-line SOW.
-
-[Your name]  
-[Link to sample redacted report or GitHub]
-
----
-
-**Follow-up (3 days, no reply):**
-
-Hi [Name] — quick bump. One thing agencies miss before client handoff: `-sample.json` and `data/mock/` references left in `server/` or `src/`. Takes ~30 seconds to scan; fixing after launch is expensive. Still have one audit slot this week if useful.
-
----
-
-**Scope line for invoice/SOW (copy-paste):**
-
-> Read-only scan of one Git repository (default branch or named release branch). Deliverable: written assessment covering credential pattern matches, production-path mock/sample references, fiction KPI patterns in configured sample paths, JSON schema drift, and CI gate recommendation. Opinion-based audit — not a guarantee of security or legal compliance. Turnaround: 2 business days after access granted.
-
----
-
-**Qualify before sending:**
-
-- [ ] They ship code to external clients OR have a fixed launch date  
-- [ ] Repo has `src/`, `server/`, or `app/` plus some fixtures/mock/data  
-- [ ] They use AI coding tools (or junior devs) — not required but higher hit rate  
-- [ ] Skip if they want live chat blocking, SOC 2 attestation, or 24/7 support SLA
+## Objection handling
