@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# Simplebeacon pre-commit — Community tier local gate
+# Install with: npx simplebeacon hook install
+set -e
+echo "Simplebeacon pre-commit..."
+npx simplebeacon scan --gate --fail-on high
+echo "Simplebeacon pre-commit passed"

@@ -1,0 +1,47 @@
+# Community tier — copy to .github/workflows/simplebeacon.yml
+# Requires committed .simplebeacon/config.json (run: npx simplebeacon init)
+
+name: Simplebeacon
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  simplebeacon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Simplebeacon gate
+        run: |
+          npx --yes simplebeacon scan \
+            --format json \
+            --output .simplebeacon/report.json \
+            --gate \
+            --verbose
+
+      - name: Post PR summary
+        if: github.event_name == 'pull_request' && always()
+        run: npx --yes simplebeacon comment --report .simplebeacon/report.json --print-only >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Job summary (push)
+        if: github.event_name != 'pull_request' && always()
+        run: npx --yes simplebeacon comment --report .simplebeacon/report.json --print-only >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simplebeacon-report
+          path: .simplebeacon/report.json
+          if-no-files-found: ignore

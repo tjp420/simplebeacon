@@ -1,0 +1,85 @@
+{
+  "type": "simplebeacon-assessment-report",
+  "title": "Simplebeacon Free Assessment — [Company / Repo Name]",
+  "generatedAt": "2026-05-24T00:00:00.000Z",
+  "generatedBy": "Simplebeacon",
+  "assessor": "[Your name]",
+  "projectRoot": "/path/to/customer/repo",
+  "executiveSummary": {
+    "gateResult": "PASS | FAIL",
+    "qualityScore": 0,
+    "filesScanned": 0,
+    "highIssues": 0,
+    "mediumIssues": 0,
+    "lowIssues": 0,
+    "headline": "One sentence: e.g. 3 fiction KPIs and 12 production-path sample references found — none blocked merge today because gate is not wired."
+  },
+  "findings": {
+    "credentials": {
+      "scanned": 0,
+      "findings": 0,
+      "severity": "high",
+      "items": [],
+      "summary": "No credential patterns detected, or list file:line with pattern type."
+    },
+    "fictionKpis": {
+      "scanned": 0,
+      "findings": 0,
+      "severity": "high",
+      "items": [
+        {
+          "file": "path/to/sample.json",
+          "description": "totalFeatures=8 or completionRate=62",
+          "recommendedAction": "Replace with repository-audit baseline values"
+        }
+      ],
+      "summary": "Sample JSON still contains known template fiction."
+    },
+    "productionLeaks": {
+      "scanned": 0,
+      "findings": 0,
+      "severity": "medium",
+      "items": [
+        {
+          "file": "server/routes/example.js",
+          "pattern": "sample-json | web-data-sample | mock-path",
+          "recommendedAction": "Serve measured data via API; do not hardcode sample paths"
+        }
+      ],
+      "summary": "Production code references mock/sample JSON paths."
+    },
+    "schemaDrift": {
+      "checked": 0,
+      "passed": 0,
+      "severity": "high",
+      "items": [],
+      "summary": "Page sample JSON missing required keys vs registered specs."
+    }
+  },
+  "recommendedActions": {
+    "immediate": [
+      "Add simplebeacon scan --gate to PR workflow",
+      "Fix high-severity fiction KPIs and credential findings",
+      "Centralize sample loading in one allowlisted module (if using stub architecture)"
+    ],
+    "next30Days": [
+      "Sync .simplebeacon/baseline.json after green test runs",
+      "Review production-leak allowlist — only seed/registry files",
+      "Publish internal rule: no totalFeatures: <rejected-feature-count> / completionRate: <rejected-completion-rate> in measured samples"
+    ]
+  },
+  "complementaryStack": {
+    "keepUsing": ["Snyk or GitHub Advanced Security for CVEs", "SonarQube for code smells"],
+    "addSimplebeaconFor": ["Mock/fiction drift in sample JSON", "Hardcoded sample paths in production directories"]
+  },
+  "pilotProposal": {
+    "offer": "Wire simplebeacon gate + 30-day support",
+    "pricePlaceholder": "$2,000–10,000/year depending on team size",
+    "ask": "Will you run simplebeacon scan --gate on every PR for 2 weeks?"
+  },
+  "commandsRun": [
+    "npx simplebeacon init --profile standard",
+    "npx simplebeacon scan --format json --output .simplebeacon/report.json",
+    "npx simplebeacon scan --gate"
+  ]
+}

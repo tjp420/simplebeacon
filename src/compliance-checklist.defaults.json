@@ -1,0 +1,72 @@
+{
+  "version": "1.0.0",
+  "title": "Simplebeacon Corporate Safety Checklist",
+  "description": "Automated guardrails for AI-generated code — maps scan signals to deploy readiness.",
+  "rules": [
+    {
+      "id": "GATE-001",
+      "check": "gate-pass",
+      "title": "Merge gate passes on configured severities",
+      "category": "Automation",
+      "severity": "critical",
+      "remediation": "Fix blocking findings and re-run: npx simplebeacon scan --gate"
+    },
+    {
+      "id": "CRED-001",
+      "check": "zero-credential-findings",
+      "title": "No credential or secret patterns in scanned paths",
+      "category": "Security",
+      "severity": "critical",
+      "remediation": "Remove secrets from the repo, rotate exposed credentials, add patterns to .gitignore"
+    },
+    {
+      "id": "LEAK-001",
+      "check": "zero-production-leaks",
+      "title": "No mock/sample JSON paths referenced from production directories",
+      "category": "Data integrity",
+      "severity": "high",
+      "remediation": "Replace hardcoded *-sample.json paths with repository-audit APIs or env-based config"
+    },
+    {
+      "id": "DATA-001",
+      "check": "schema-compliance",
+      "title": "Registered page samples match schema specs",
+      "category": "Data integrity",
+      "severity": "high",
+      "remediation": "Fix schema violations listed in the scan report"
+    },
+    {
+      "id": "DATA-002",
+      "check": "consistency-pass",
+      "title": "No fiction KPI or baseline drift in anchor samples",
+      "category": "Data integrity",
+      "severity": "high",
+      "remediation": "Replace fiction metrics with repository-audit baseline values"
+    },
+    {
+      "id": "SUPPLY-001",
+      "check": "npm-no-critical-high",
+      "title": "No critical or high npm audit vulnerabilities",
+      "category": "Supply chain",
+      "severity": "critical",
+      "remediation": "Run npm audit fix; upgrade transitive dependencies blocking CVEs"
+    },
+    {
+      "id": "SUPPLY-002",
+      "check": "npm-moderate-limit",
+      "title": "Moderate npm vulnerabilities within policy limit",
+      "category": "Supply chain",
+      "severity": "medium",
+      "maxModerate": 0,
+      "remediation": "Upgrade dependencies flagged by npm audit (moderate severity)"
+    },
+    {
+      "id": "AUTH-001",
+      "check": "production-auth-profile",
+      "title": "Production profile has JWT auth enabled (REQUIRE_AUTH)",
+      "category": "Access control",
+      "severity": "medium",
+      "remediation": "Set REQUIRE_AUTH=true and real JWT secrets in .env.production on the deploy host"
+    }
+  ]
+}

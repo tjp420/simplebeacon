@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+# Simplebeacon pre-push — includes Jest baseline check
+# Install with: npx simplebeacon hook install --type pre-push
+set -e
+echo "Simplebeacon pre-push..."
+npx simplebeacon scan --gate --with-jest --fail-on high
+echo "Simplebeacon pre-push passed"

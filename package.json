@@ -1,0 +1,54 @@
+{
+  "name": "simplebeacon",
+  "version": "1.0.0",
+  "description": "Community CLI — detect mock data, fiction KPIs, and credential leaks. Local scans, JSON + text reports, CI gate (--gate), GitHub Action + pre-commit hooks.",
+  "author": "SimpleBeacon",
+  "license": "MIT",
+  "homepage": "https://simplebeacon.ai/community",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tjp420/simplebeacon.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tjp420/simplebeacon/issues"
+  },
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "simplebeacon": "./bin/simplebeacon.js",
+    "samplebeacon": "./bin/simplebeacon.js"
+  },
+  "scripts": {
+    "test": "node --test tests/**/*.test.js",
+    "prepublishOnly": "npm test",
+    "pack:check": "npm pack --dry-run"
+  },
+  "keywords": [
+    "simplebeacon",
+    "simplebeacon",
+    "mock-data",
+    "ai-fiction",
+    "code-quality",
+    "ci-gate",
+    "pre-commit",
+    "github-action",
+    "devsecops"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "docs/",
+    "examples/",
+    "LICENSE",
+    "README.md"
+  ]
+}
