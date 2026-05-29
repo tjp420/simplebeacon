@@ -24,6 +24,14 @@ test('resolveEffectiveScanPaths narrows to requested subpath under platform', ()
     assert.deepEqual(paths, [webData]);
 });
 
+test('resolveEffectiveScanPaths honors local config for isolated honey-pot repos', () => {
+    const paths = resolveEffectiveScanPaths('/tmp/client-repo', '/tmp/client-repo', {
+        scanPaths: ['web/data', 'data/mock']
+    });
+    assert.ok(paths.some((p) => /web[\\/]data$/i.test(p)));
+    assert.ok(paths.some((p) => /data[\\/]mock$/i.test(p)));
+});
+
 test('resolveEffectiveScanPaths uses configured paths for platform root', () => {
     const paths = resolveEffectiveScanPaths(AI_PLATFORM, AI_PLATFORM, {
         scanPaths: ['web/data', 'data/mock']

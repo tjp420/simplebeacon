@@ -31,9 +31,7 @@ const GENERIC_REJECTED_FICTION = {
 };
 
 const DEFAULT_MOCK_SCAN_RELATIVE_PATHS = [
-    'web/data',
-    'data/mock',
-    'data-central/ai-tools/mock-data'
+    'web/data'
 ];
 
 const DEFAULT_CONSISTENCY_ANCHOR_SAMPLES = CASCADE_ANCHORS;
@@ -57,6 +55,7 @@ const PROFILE_RULES = {
         'sample-consistency': { enabled: false },
         roadmap: { enabled: false },
         'production-leak': { enabled: true, severity: 'high' },
+        'agency-handoff-patterns': { enabled: true, severity: 'medium' },
         'jest-baseline': { enabled: false, runTests: false }
     },
     standard: {
@@ -65,8 +64,11 @@ const PROFILE_RULES = {
         'sample-consistency': { enabled: true },
         roadmap: { enabled: true },
         'production-leak': { enabled: true, severity: 'high' },
+        'agency-handoff-patterns': { enabled: true, severity: 'medium' },
         'jest-baseline': { enabled: false, runTests: false },
-        'fiction-kpi-patterns': { enabled: true, severity: 'medium' }
+        'fiction-kpi-patterns': { enabled: true, severity: 'medium' },
+        'llm-slop-patterns': { enabled: true, severity: 'medium', registryCheck: false },
+        'agency-handoff-patterns': { enabled: true, severity: 'medium' }
     },
     cascade: {
         credentials: { enabled: true, scanProduction: true },
@@ -89,9 +91,19 @@ const PROFILE_RULES = {
             enabled: false,
             runTests: false,
             testCommand: 'npm test -- --no-coverage --passWithNoTests'
-        }
+        },
+        'llm-slop-patterns': { enabled: true, severity: 'medium', registryCheck: false },
+        'agency-handoff-patterns': { enabled: true, severity: 'medium' }
     }
 };
+
+const DEFAULT_SCANNER_META_FILES = [
+    '.simplebeacon/analyzer-cache.json',
+    '.simplebeacon/source-kpi-findings.json',
+    '.simplebeacon/source-kpi-findings-with-docs.json',
+    '.simplebeacon/history.json',
+    '.simplebeacon/trust-history.json'
+];
 
 const DEFAULT_CONFIG = {
     profile: 'standard',
@@ -101,7 +113,7 @@ const DEFAULT_CONFIG = {
     consistencyAnchorSamples: DEFAULT_CONSISTENCY_ANCHOR_SAMPLES,
     ignore: IGNORE_DEFAULTS,
     pathExclusions: [], // User-configurable path exclusion tokens
-    scannerMetaFiles: [], // User-configurable scanner infrastructure files to exclude
+    scannerMetaFiles: DEFAULT_SCANNER_META_FILES,
     rules: PROFILE_RULES.standard,
     gate: {
         failOn: ['high'],
@@ -135,10 +147,17 @@ function resolvePathFromBase(baseDir, relativePath) {
 }
 
 function loadCentralDataConfig(baseDir) {
-    const configPath = path.join(baseDir, 'data-central', 'config', 'central-data-config.json');
-    const result = readJsonFile(configPath);
-    if (!result.ok) return null;
-    return result.data?.centralDataTruth || result.data || null;
+    const candidates = [
+        path.join(baseDir, 'config', 'central-data-config.json'),
+        path.join(baseDir, 'data-central', 'config', 'central-data-config.json')
+    ];
+    for (const configPath of candidates) {
+        const result = readJsonFile(configPath);
+        if (result.ok) {
+            return result.data?.centralDataTruth || result.data || null;
+        }
+    }
+    return null;
 }
 
 function resolveScanPaths(baseDir, config, extraPaths = []) {
@@ -327,6 +346,10 @@ function loadSimplebeaconConfig(baseDir, configPath = null) {
 
     if (!config.ignore) config.ignore = IGNORE_DEFAULTS;
     if (!config.productionPaths) config.productionPaths = DEFAULT_CONFIG.productionPaths;
+    config.scannerMetaFiles = [...new Set([
+        ...DEFAULT_SCANNER_META_FILES,
+        ...(Array.isArray(fileConfig.scannerMetaFiles) ? fileConfig.scannerMetaFiles : [])
+    ])];
 
     return config;
 }

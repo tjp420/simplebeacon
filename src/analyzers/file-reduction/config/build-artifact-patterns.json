@@ -1,0 +1,42 @@
+{
+  "directories": [
+    "node_modules",
+    ".venv",
+    "dist",
+    "build",
+    "coverage",
+    ".next",
+    ".nuxt",
+    "out",
+    "target",
+    ".cache",
+    ".turbo",
+    ".parcel-cache",
+    ".vite",
+    "__pycache__",
+    ".pytest_cache"
+  ],
+  "files": [
+    "*.log",
+    "*.tmp",
+    "*.cache",
+    ".DS_Store",
+    "Thumbs.db",
+    "*.swp",
+    "*.swo"
+  ],
+  "extensions": [
+    ".min.js",
+    ".min.css",
+    ".map",
+    ".d.ts",
+    ".o",
+    ".so",
+    ".dll",
+    ".exe"
+  ],
+  "ignorePaths": [
+    ".git",
+    ".simplebeacon"
+  ]
+}

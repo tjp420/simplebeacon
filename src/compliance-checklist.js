@@ -67,11 +67,52 @@ function detectNpmAuditSummary(projectRoot) {
     const pkgPath = path.join(root, 'package.json');
     if (!fs.existsSync(pkgPath)) return null;
 
+    try {
+        const auditRunnerPath = path.join(root, 'server', 'lib', 'npm-audit-runner.js');
+        if (fs.existsSync(auditRunnerPath)) {
+            const { runNpmAudit } = require(auditRunnerPath);
+            const audit = runNpmAudit(root, { force: false });
+            if (audit?.summary && !audit.error) {
+                const summary = audit.summary;
+                return {
+                    source: 'npm-audit',
+                    summary: {
+                        critical: summary.critical || 0,
+                        high: summary.high || 0,
+                        moderate: summary.moderate ?? summary.medium ?? 0,
+                        low: summary.low || 0,
+                        info: summary.info || 0,
+                        total: summary.total ?? summary.vulnerabilityTotal ?? 0
+                    },
+                    note: 'Real npm audit from project root'
+                };
+            }
+        }
+    } catch {
+        /* fall through to lockfile heuristic */
+    }
+
     const lock = readJsonSafe(path.join(root, 'package-lock.json'));
     const pkg = readJsonSafe(pkgPath);
     const naturalVer = lock?.packages?.['node_modules/natural']?.version
-        || String(pkg?.dependencies?.natural || '').replace(/^[\^~>=<]+/, '');
+        || String(pkg?.dependencies?.natural || pkg?.devDependencies?.natural || '')
+            .replace(/^[\^~>=<]+/, '');
     const naturalMajor = parseInt(String(naturalVer).split('.')[0], 10);
+
+    if (!naturalVer) {
+        return {
+            source: 'lockfile-heuristic',
+            summary: {
+                critical: 0,
+                high: 0,
+                moderate: 0,
+                low: 0,
+                info: 0,
+                total: 0
+            },
+            note: 'natural not in dependency tree — run npm audit on CI for full CVE coverage'
+        };
+    }
 
     return {
         source: 'lockfile-heuristic',

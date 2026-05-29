@@ -44,8 +44,7 @@ const CASCADE_ANCHORS = [
     'implementation-plan-sample.json',
     'master-roadmap-sample.json',
     'release-timeline-sample.json',
-    'dashboard-home-sample.json',
-    'gguf-mock-analysis-sample.json'
+    'dashboard-home-sample.json'
 ];
 
 function pathExists(baseDir, relativePath) {
@@ -103,7 +102,7 @@ function detectPlatformSignalsAt(baseDir) {
         cascadeLayout: isCascadeMonorepo(root),
         pageSampleDir: pathExists(root, 'web/data'),
         stubApi: fs.existsSync(path.join(root, 'src/api/dashboard-stub-api.js')),
-        serverEntry: fs.existsSync(path.join(root, 'gguf-dashboard-server.js'))
+        serverEntry: fs.existsSync(path.join(root, 'simplebeacon-server.js'))
     };
 }
 
@@ -111,11 +110,28 @@ function hasLocalSimplebeaconConfig(baseDir) {
     return fs.existsSync(path.join(baseDir, '.simplebeacon', 'config.json'));
 }
 
+function isGithubCacheClone(scanRoot) {
+    const normalized = path.resolve(scanRoot).replace(/\\/g, '/').toLowerCase();
+    return /\/github-cache\/[^/]+/.test(normalized);
+}
+
+/** External clones and honey-pot repos must not inherit ai-platform / monorepo scan scope. */
+function isIsolatedScanRoot(scanRoot) {
+    const root = path.resolve(scanRoot);
+    if (isGithubCacheClone(root)) {
+        return true;
+    }
+    if (hasLocalSimplebeaconConfig(root) && !isCascadeMonorepo(root)) {
+        return true;
+    }
+    return false;
+}
+
 function resolvePlatformRoot(projectRoot) {
     const scanRoot = path.resolve(projectRoot);
 
-    // Honey-pot / client repos: own .simplebeacon at scan root must not inherit monorepo parent.
-    if (hasLocalSimplebeaconConfig(scanRoot)) {
+    // Honey-pot / client repos and dashboard github-cache clones stay scoped to scan root.
+    if (isIsolatedScanRoot(scanRoot)) {
         return { scanRoot, platformRoot: scanRoot };
     }
 
@@ -210,5 +226,7 @@ module.exports = {
     detectProductionPaths,
     detectPlatformSignalsAt,
     resolvePlatformRoot,
+    isGithubCacheClone,
+    isIsolatedScanRoot,
     isCascadeMonorepo
 };

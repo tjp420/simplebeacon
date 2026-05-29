@@ -7,7 +7,9 @@ const path = require('path');
 const {
     redactSecretsInString,
     sanitizeScanReport,
-    sanitizeReportForCloudUpload
+    sanitizeReportForCloudUpload,
+    sanitizePublicOutput,
+    applyPublicGateToAnalyzeResponse
 } = require('../src/lib/report-sanitizer');
 const { purgeExpiredAssessments } = require('../../../server/lib/assessment-retention');
 
@@ -39,6 +41,39 @@ test('sanitizeScanReport redacts issue descriptions', () => {
         }]
     });
     assert.match(report.rawIssues[0].description, /\[REDACTED\]/);
+});
+
+test('sanitizePublicOutput keeps counts but strips line-level detail', () => {
+    const publicView = sanitizePublicOutput({
+        gate: { pass: false },
+        qualityScore: 72,
+        summary: { codeFilesAnalyzed: 4460 },
+        rawIssues: [
+            { severity: 'critical', filePath: 'server/index.js', line: 12, match: 'sk_live_abc' },
+            { severity: 'high', filePath: 'server/app.js', line: 4, match: 'mock/sample.json' },
+            { severity: 'medium', filePath: 'docs/plan.md', line: 9, match: 'TODO' }
+        ]
+    });
+    assert.equal(publicView.publicGateLocked, true);
+    assert.equal(publicView.summary.status, 'FAIL');
+    assert.equal(publicView.summary.totalIssuesFound, 3);
+    assert.equal(publicView.severityCounts.critical, 1);
+    assert.equal(publicView.severityCounts.high, 1);
+    assert.equal(publicView.issues.length, 0);
+});
+
+test('applyPublicGateToAnalyzeResponse removes rawIssues from API payload', () => {
+    const gated = applyPublicGateToAnalyzeResponse({
+        success: true,
+        report: {
+            gate: { pass: true },
+            qualityScore: 100,
+            rawIssues: [{ severity: 'high', filePath: 'server/a.js', line: 1 }]
+        }
+    });
+    assert.equal(gated.publicGateLocked, true);
+    assert.equal(gated.publicSummary.summary.status, 'PASS');
+    assert.equal(gated.report.rawIssues.length, 0);
 });
 
 test('purgeExpiredAssessments removes old assessment directories', async () => {

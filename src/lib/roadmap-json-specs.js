@@ -1,5 +1,10 @@
 /**
- * Structural specs for data/roadmap/*.json files (not PAGE_SAMPLE_SPECS).
+ * Structural specs for data/roadmap JSON files (not PAGE_SAMPLE_SPECS).
+ *
+ * Canonical sprint baseline (active scan): data/roadmap/ai-roadmap-report.json — repository-audit only.
+ * Dashboard feature snapshot (API / development-roadmap): data-central/roadmap/roadmap-data.json.
+ * Archived (legacy fiction if present under data/roadmap/archive/): ai-roadmap-data.json,
+ *   cascade-project-roadmap.json — skipped by validateRoadmapFiles when spec.archived is true.
  */
 
 const fs = require('fs');
@@ -11,13 +16,16 @@ const ROADMAP_JSON_SPECS = {
         type: 'gguf-development-roadmap-report',
         topLevelKeys: ['projectOverview', 'developmentPhases', 'dataSource'],
         arrayKeys: ['developmentPhases'],
-        requireRepositoryAudit: true
+        legacyFiction: true,
+        archived: true,
+        relativePath: 'archive/gguf-roadmap-data.json'
     },
     'ai-roadmap-report.json': {
         type: 'ai-roadmap-report-model',
         topLevelKeys: ['projectOverview', 'developmentPhases', 'dataSource'],
         arrayKeys: ['developmentPhases'],
-        requireRepositoryAudit: true
+        requireRepositoryAudit: true,
+        canonical: true
     },
     'ai-roadmap-data.json': {
         type: 'ai-powered-roadmap-report',
@@ -35,6 +43,14 @@ const ROADMAP_JSON_SPECS = {
         archived: true,
         maxBytes: 512000,
         relativePath: 'archive/cascade-project-roadmap.json'
+    },
+    'ai-roadmap-report-legacy-export.json': {
+        type: 'ai-powered-roadmap-report',
+        topLevelKeys: ['executiveSummary', 'developmentPhases'],
+        arrayKeys: ['developmentPhases'],
+        legacyFiction: true,
+        archived: true,
+        relativePath: 'archive/ai-roadmap-report-legacy-export.json'
     }
 };
 
@@ -56,10 +72,10 @@ function validateRoadmapJson(fileName, payload, baseline) {
         });
     }
 
-    if (spec.legacyFiction) {
+    if (spec.legacyFiction && !spec.canonical) {
         violations.push({
             kind: 'legacy-fiction',
-            message: 'Legacy roadmap file — prefer gguf-roadmap-data.json / ai-roadmap-report.json baselines'
+            message: 'Archived legacy export — use data/roadmap/ai-roadmap-report.json (repository-audit)'
         });
     }
 

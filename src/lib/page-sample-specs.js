@@ -142,12 +142,12 @@ const PAGE_SAMPLE_SPECS = {
         objectKeys: ['reductionScan'],
         allowEmptyArrays: ['merges']
     },
-    'gguf-mock-analysis-sample.json': {
-        type: 'gguf-mock-data-analysis-report',
+    'mock-analysis-sample.json': {
+        type: 'mock-data-analysis-report',
         topLevelKeys: ['analysisOverview'],
         nestedChecks: [{ path: ['analysisOverview', 'issuesDetected'] }],
         arrayKeys: ['mockDataCategories', 'detectedIssues'],
-        objectKeys: ['qualityMetrics', 'ggufAIInsights', 'performanceMetrics', 'privacyAndSecurity'],
+        objectKeys: ['qualityMetrics', 'performanceMetrics', 'privacyAndSecurity'],
         allowEmptyArrays: ['detectedIssues']
     },
     'issue-resolution-sample.json': {
@@ -185,7 +185,7 @@ const PAGE_SAMPLE_SPECS = {
     },
     'roadmap-comparison-sample.json': {
         type: 'roadmap-comparison-report',
-        topLevelKeys: ['ggufReport', 'aiReport', 'differences'],
+        topLevelKeys: ['mockReport', 'aiReport', 'differences'],
         nestedChecks: [
             { path: ['differences', 'completionRate'] },
             { path: ['visualComparison', 'summary'] }
@@ -215,12 +215,6 @@ const PAGE_SAMPLE_SPECS = {
         ],
         arrayKeys: [],
         objectKeys: ['roadmap']
-    },
-    'gguf-roadmap-sample.json': {
-        type: 'gguf-development-roadmap-report',
-        topLevelKeys: ['projectOverview', 'developmentPhases', 'dataSource'],
-        arrayKeys: ['developmentPhases'],
-        requireRepositoryAudit: true
     },
     'master-roadmap-sample.json': {
         topLevelKeys: ['overview', 'sources', 'dataSource'],
@@ -255,13 +249,60 @@ const PAGE_SAMPLE_SPECS = {
         type: 'simplebeacon-cli-model',
         topLevelKeys: ['overview', 'items', 'commands', 'rules'],
         arrayKeys: ['items', 'commands', 'rules']
+    },
+    'status-sample.json': {
+        type: 'status-model',
+        overviewKeys: ['gatePass', 'qualityScore'],
+        arrayKeys: ['checks']
+    },
+    'repository-health-sample.json': {
+        type: 'repository-health-model',
+        overviewKeys: ['repositoryHealthScore', 'duplicateGroups'],
+        objectKeys: ['platform', 'monorepo'],
+        arrayKeys: ['recommendations', 'disclaimers'],
+        allowEmptyArrays: ['recommendations']
+    },
+    'trust-verification-sample.json': {
+        type: 'simplebeacon-trust-verification',
+        topLevelKeys: ['platform', 'monorepo', 'headline'],
+        objectKeys: ['repositoryHealth'],
+        arrayKeys: ['disclaimers']
+    },
+    'launch-readiness-sample.json': {
+        type: 'simplebeacon-launch-readiness-summary',
+        topLevelKeys: ['passed', 'failed', 'total', 'decision'],
+        arrayKeys: ['checks']
+    },
+    'audit-gate-sample.json': {
+        type: 'audit-gate-report',
+        overviewKeys: ['gatePass', 'qualityScore'],
+        arrayKeys: ['layers'],
+        objectKeys: ['npmAudit']
+    },
+    'analyze-pipeline-sample.json': {
+        type: 'analyze-pipeline-report',
+        overviewKeys: ['stepsCompleted', 'fictionSampleFilesScanned'],
+        arrayKeys: ['steps', 'recommendations']
+    },
+    'compliance-summary-sample.json': {
+        type: 'compliance-summary-report',
+        overviewKeys: ['rulesPassed', 'complianceScore'],
+        arrayKeys: ['rules']
+    },
+    'gguf-roadmap-sample.json': {
+        type: 'ai-roadmap-report-model',
+        topLevelKeys: ['projectOverview'],
+        nestedChecks: [{ path: ['projectOverview', 'projectName'] }],
+        arrayKeys: ['developmentPhases', 'predictions', 'risks', 'actionPlan', 'performanceMetrics'],
+        objectKeys: ['recommendations'],
+        allowEmptyArrays: ['predictions', 'risks', 'actionPlan', 'performanceMetrics']
     }
 };
 
 const ROADMAP_SAMPLES = [
     'cascade-roadmap-sample.json',
-    'gguf-roadmap-sample.json',
-    'master-roadmap-sample.json'
+    'master-roadmap-sample.json',
+    'gguf-roadmap-sample.json'
 ];
 
 module.exports = { PAGE_SAMPLE_SPECS, ROADMAP_SAMPLES };

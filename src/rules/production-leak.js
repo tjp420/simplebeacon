@@ -44,10 +44,6 @@ const CONFIG_FILE_NAMES = new Set([
     'jest.config.js',
     'rollup.config.js'
 ]);
-const DEFAULT_SCANNER_META_FILES = new Set([
-    // Scanner meta files can be configured via simplebeacon.json
-    // This prevents false positives in scanner infrastructure
-]);
 
 function normalizeRel(baseDir, filePath) {
     return path.relative(baseDir, filePath).split(path.sep).join('/');
@@ -78,6 +74,12 @@ function globMatch(relativePath, pattern) {
         if (suffix.endsWith('/**')) {
             const prefix = suffix.replace(/\/\*\*$/, '');
             return normalized === prefix || normalized.startsWith(`${prefix}/`) || normalized.includes(`/${prefix}/`);
+        }
+        if (p.startsWith('**/') && suffix !== p) {
+            const tailRegex = new RegExp(
+                `(^|/)${suffix.replace(/\./g, '\\.').replace(/\*/g, '[^/]*')}$`
+            );
+            return tailRegex.test(normalized);
         }
     }
     const regex = new RegExp(

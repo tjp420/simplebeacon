@@ -8,8 +8,10 @@ const VALID_RULES = new Set([
     'sample-consistency',
     'roadmap',
     'production-leak',
-    'jest-baseline',
-    'fiction-kpi-patterns'
+    'fiction-kpi-patterns',
+    'llm-slop-patterns',
+    'agency-handoff-patterns',
+    'jest-baseline'
 ]);
 
 const VALID_SEVERITIES = new Set(['critical', 'high', 'medium', 'low']);

@@ -2,6 +2,7 @@
  * Sanitize user-supplied CLI and config strings.
  */
 
+// eslint-disable-next-line no-control-regex -- strip ASCII control characters from user input
 const CONTROL_CHARS = /[\x00-\x1F\x7F]/g;
 
 function sanitizeFilePath(input) {

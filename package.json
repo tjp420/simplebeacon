@@ -19,10 +19,12 @@
   },
   "bin": {
     "simplebeacon": "./bin/simplebeacon.js",
+    "simplebeacon-proxy": "./bin/simplebeacon-proxy.js",
     "samplebeacon": "./bin/simplebeacon.js"
   },
   "scripts": {
     "test": "node --test tests/**/*.test.js",
+    "proxy": "node bin/simplebeacon-proxy.js",
     "prepublishOnly": "npm test",
     "pack:check": "npm pack --dry-run"
   },

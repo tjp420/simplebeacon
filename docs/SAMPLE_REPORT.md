@@ -82,6 +82,37 @@ Simplebeacon performed a read-only static analysis on the provided repository ro
 
 ---
 
+## How to fix each issue
+
+### Fix: Hardcoded credential patterns
+
+**Time required:** 30–60 minutes  
+**Difficulty:** Moderate
+
+**Step-by-step:**
+1. Run `npx simplebeacon scan --format json --output .simplebeacon/report.json` and note every credential hit.
+2. Rotate exposed secrets in the provider console (AWS IAM, Stripe Dashboard, database host, etc.).
+3. Remove hardcoded strings from source and load from environment variables or a secret manager.
+
+**Why this matters:** Secrets in git history, logs, or error output can expose infrastructure before go-live.
+
+**Verify:** `npx simplebeacon scan --gate`
+
+*(Additional fix guides appear per finding category in generated reports.)*
+
+---
+
+## Your personalized action plan
+
+### Week 1: Critical path
+
+1. **Remove and rotate exposed credentials** (~45 min)
+   - Impact: Clears critical security blockers
+
+*(Timeline sections expand based on assessment findings.)*
+
+---
+
 ## Compliance and gate recommendations
 
 | Checklist item | Status | Notes |

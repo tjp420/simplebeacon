@@ -6,7 +6,10 @@ const fs = require('fs');
 const path = require('path');
 const { globMatch } = require('../rules/production-leak');
 
-const REPO_SKIP_DIRS = new Set(['node_modules', '.git', 'uploads', 'coverage', 'archive', 'dist', 'build']);
+const REPO_SKIP_DIRS = new Set([
+    'node_modules', '.git', 'uploads', 'coverage', 'archive', 'dist', 'build',
+    'github-cache', 'deliverables', '.simplebeacon', 'data-central', 'security-reports'
+]);
 const REPO_WALK_MAX_DEPTH = 24;
 const JSON_MAX_BYTES = 512000;
 
@@ -35,6 +38,49 @@ const SKIP_FICTION_PATHS = new Set([
 ]);
 
 const LEGACY_SKIP_PATH_ALIASES = new Set(['deprecatedNarrative', 'deprecated']);
+
+/** Scan/trust metric counts — not roadmap completion-rate KPIs. */
+const NON_FICTION_METRIC_KEYS = new Set([
+    'consistencyChecked',
+    'consistencyPassed',
+    'schemaChecked',
+    'schemaPassed',
+    'pageSampleSchemaChecked',
+    'pageSampleSchemaPassed',
+    'fictionJsonFilesScanned',
+    'fictionSampleFilesScanned',
+    'ruleScopedFilesAnalyzed',
+    'repositoryFilesTotal',
+    'repositoryFoldersTotal',
+    'repositoryFilesAudited',
+    'jsonFilesAnalyzed',
+    'sampleDataFilesAnalyzed',
+    'mockSampleFiles',
+    'issueCount',
+    'credentialScanned',
+    'productionLeakScanned',
+    'sourceCodeFilesScanned',
+    'apiRouteCount',
+    'similarity',
+    'tokenJaccard',
+    'lineHashJaccard',
+    'confidence',
+    'edges',
+    'nodes',
+    'files',
+    'totalFiles',
+    'totalFolders',
+    'stepsCompleted',
+    'stepCount',
+    'codeFilesAnalyzed',
+    'codeFilesDiscovered',
+    'findingsTotal',
+    'healthScore',
+    'qualityScore',
+    'lineCoverage',
+    'branchCoverage',
+    'testCoverage'
+]);
 
 const ACTIVE_MODEL_KEYS = new Set(['name', 'activeModel', 'model', 'currentModel']);
 
@@ -100,6 +146,7 @@ function deepIncludesFiction(value, baseline, depth = 0, keyPath = '') {
     }
 
     if (typeof value === 'number') {
+        if (NON_FICTION_METRIC_KEYS.has(leafKey)) return hits;
         if ((fiction.completionRates || []).includes(value)) hits.push(`${value}% completion claim`);
         if ((fiction.openIssueCounts || []).includes(value)) hits.push(`${value} open issues claim`);
         if ((fiction.aiConfidenceScores || []).includes(value)) hits.push(`${value}% AI confidence claim`);
@@ -355,6 +402,15 @@ async function loadJsonExtractions(fileRefs, baseline) {
         if (!fs.existsSync(filePath)) continue;
         try {
             const payload = JSON.parse(await fs.promises.readFile(filePath, 'utf8'));
+            if (
+                payload?.type === 'simplebeacon-complete-scan'
+                || payload?.type === 'simplebeacon-complete-scan-summary'
+                || payload?.type === 'simplebeacon-report'
+                || payload?.type === 'simplebeacon-cleanup-brief'
+            ) {
+                extractions.push({ fileName: displayName, kpis: {}, fictionHits: [] });
+                continue;
+            }
             extractions.push(extractKpis(payload, displayName, baseline));
         } catch (error) {
             extractions.push({

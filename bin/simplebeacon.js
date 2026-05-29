@@ -17,7 +17,7 @@ const {
     resolvePlatformRoot,
     writeManagedFileSync
 } = require('../src/index');
-const { formatGithubComment, postGithubComment, formatGithubStepSummary } = require('../src/reporters/github-comment');
+const { formatGithubComment, postGithubComment } = require('../src/reporters/github-comment');
 const { buildAssessmentReport } = require('../src/assessment');
 const { sanitizeReportForCloudUpload } = require('../src/lib/report-sanitizer');
 const { evaluateComplianceChecklist } = require('../src/compliance-checklist');
@@ -39,7 +39,11 @@ const {
 } = require('../src/lib/path-utils');
 const { sanitizePath } = require('../src/lib/path-sanitizer');
 
-const VALID_COMMANDS = new Set(['scan', 'init', 'comment', 'baseline-sync', 'assess', 'compliance', 'hook-install']);
+const { compileAuditReportMarkdown } = require('../src/reporters/audit-report');
+const { enhanceExecutiveSummary } = require('../src/reporters/report-enhance');
+const { runFileReductionScan } = require('../src/lib/file-reduction-orchestrator');
+const { generateFileReductionReport } = require('../src/reporters/file-reduction-report');
+const VALID_COMMANDS = new Set(['scan', 'init', 'comment', 'baseline-sync', 'assess', 'compliance', 'report', 'hook-install', 'reduce']);
 
 function writeStdoutLine(message = '') {
     process.stdout.write(`${message}\n`);
@@ -76,7 +80,10 @@ function parseArgs(argv) {
         verbose: false,
         help: false,
         company: null,
+        client: null,
+        branch: null,
         assessor: null,
+        assessment: null,
         printOnly: false,
         apiToken: null,
         upload: null,
@@ -85,7 +92,10 @@ function parseArgs(argv) {
         offline: false,
         noTrustBanner: false,
         dryRun: false,
-        force: false
+        force: false,
+        enhance: false,
+        enhanceModel: null,
+        scanner: null
     };
 
     for (let i = flagStart; i < args.length; i += 1) {
@@ -118,6 +128,12 @@ function parseArgs(argv) {
             options.company = args[++i];
         } else if (arg === '--assessor' && args[i + 1]) {
             options.assessor = args[++i];
+        } else if (arg === '--client' && args[i + 1]) {
+            options.client = args[++i];
+        } else if (arg === '--branch' && args[i + 1]) {
+            options.branch = args[++i];
+        } else if (arg === '--assessment' && args[i + 1]) {
+            options.assessment = args[++i];
         } else if (arg === '--print-only') {
             options.printOnly = true;
         } else if (arg === '--api-token' && args[i + 1]) {
@@ -136,6 +152,12 @@ function parseArgs(argv) {
             options.dryRun = true;
         } else if (arg === '--force') {
             options.force = true;
+        } else if (arg === '--enhance') {
+            options.enhance = true;
+        } else if (arg === '--enhance-model' && args[i + 1]) {
+            options.enhanceModel = args[++i];
+        } else if (arg === '--scanner' && args[i + 1]) {
+            options.scanner = args[++i];
         } else if (arg === '--help' || arg === '-h') {
             options.help = true;
         }
@@ -154,6 +176,7 @@ function applyCliPathSafety(options) {
         'baseline-sync',
         'assess',
         'compliance',
+        'report',
         'hook-install'
     ]);
 
@@ -184,8 +207,10 @@ Usage:
   simplebeacon comment [options]  Post GitHub PR comment from JSON report
   simplebeacon assess [options]   Build customer assessment JSON from scan report
   simplebeacon compliance [opts]  Evaluate corporate safety checklist from report
+  simplebeacon report [options]   Build client-facing markdown audit from scan JSON
   simplebeacon baseline sync      Run Jest and update .simplebeacon/baseline.json
   simplebeacon hook install         Install pre-commit or pre-push git hook
+  simplebeacon reduce [options]     Analyze repo for file-reduction opportunities (dry-run)
 
 Init options:
   --path <dir>        Project root (default: cwd)
@@ -220,6 +245,18 @@ Assess options:
   --company <name>    Customer / repo name for report title
   --assessor <name>   Your name on the deliverable
 
+Report options:
+  --path <dir>        Project root (default: cwd)
+  --report <file>     Scan report JSON (default: .simplebeacon/report.json)
+  --assessment <file> Assessment JSON (default: .simplebeacon/assessment.json if present)
+  --output <file>     Write markdown audit (default: AUDIT_REPORT.md)
+  --company <name>    Prepared-for name on cover line
+  --client <name>     Target project name (default: repo folder name)
+  --branch <name>     Optional branch label on cover line
+  --assessor <name>   Assessor name on cover line
+  --enhance           Rewrite executive summary via OpenAI (requires assessment.json + OPENAI_API_KEY)
+  --enhance-model <m> OpenAI model for --enhance (default: gpt-4o-mini or OPENAI_MODEL)
+
 Hook install options:
   --path <dir>        Project root (default: cwd)
   --type pre-commit|pre-push   Hook to install (default: pre-commit)
@@ -227,6 +264,15 @@ Hook install options:
   --fail-on a,b,c     Gate severities (default: high)
   --with-jest         Include Jest baseline in hook scan
   --husky             Prefer .husky/ even when not present yet
+
+Reduce options:
+  --path <dir>        Project root (default: cwd)
+  --format text|json  Output format (default: text)
+  --output <file>     Write report to file (default: .simplebeacon/file-reduction.md)
+  --scanner <id>      Run one scanner: build-artifacts, asset-consolidation, unused-files,
+                      config-management, dependency-health, environment-variables,
+                      data-freshness, data-access-patterns, data-privacy, data-lineage, data-consistency
+  --verbose, -v       Print scanner summaries
 
 Profiles:
   minimal    credentials + production-leak only
@@ -241,9 +287,13 @@ Examples:
   npx simplebeacon scan --format json --output .simplebeacon/report.json --gate
   npx simplebeacon scan --format json --api-token sb_xxx --upload https://simplebeacon.ai/api/simplebeacon/cloud-scan
   npx simplebeacon assess --company "Acme" --assessor "Jane"
+  npx simplebeacon report --company "Acme LLC" --client "Acme Dashboard" --assessor "Jane"
+  npx simplebeacon report --company "Acme LLC" --client "Acme Dashboard" --enhance
   npx simplebeacon compliance --format json --output .simplebeacon/compliance.json
   npx simplebeacon baseline sync
   npx simplebeacon hook install
+  npx simplebeacon reduce
+  npx simplebeacon reduce --format json --output .simplebeacon/file-reduction.json
 `);
 }
 
@@ -435,10 +485,94 @@ async function runAssessCommand(options) {
     writeStdoutLine(`Headline: ${assessment.executiveSummary.headline}`);
 }
 
+async function runReportCommand(options) {
+    const root = sanitizePath(options.path);
+    const reportPath = path.resolve(options.report || '.simplebeacon/report.json');
+    if (!fs.existsSync(reportPath)) {
+        throw new Error(`Report not found: ${reportPath}. Run: npx simplebeacon scan --format json --output .simplebeacon/report.json --gate`);
+    }
+
+    let report;
+    try {
+        report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+    } catch (error) {
+        throw new Error(`Invalid JSON report at ${reportPath}: ${error.message}`);
+    }
+
+    let assessment = null;
+    const assessmentPath = path.resolve(options.assessment || '.simplebeacon/assessment.json');
+    if (options.enhance) {
+        if (!fs.existsSync(assessmentPath)) {
+            throw new Error(`Assessment required for --enhance: ${assessmentPath}. Run: npx simplebeacon assess --company "..." --assessor "..."`);
+        }
+    } else if (options.assessment || fs.existsSync(assessmentPath)) {
+        if (!fs.existsSync(assessmentPath)) {
+            throw new Error(`Assessment not found: ${assessmentPath}`);
+        }
+    }
+
+    if (fs.existsSync(assessmentPath)) {
+        try {
+            assessment = JSON.parse(fs.readFileSync(assessmentPath, 'utf8'));
+        } catch (error) {
+            throw new Error(`Invalid JSON assessment at ${assessmentPath}: ${error.message}`);
+        }
+    }
+
+    const reportOptions = {
+        client: options.client || path.basename(root),
+        company: options.company || options.client || path.basename(root),
+        assessor: options.assessor || 'Simplebeacon Security Audit Service',
+        branch: options.branch || null,
+        assessment,
+        projectRoot: report.projectRoot || root
+    };
+
+    let markdown = compileAuditReportMarkdown(report, reportOptions);
+
+    if (options.enhance) {
+        if (!process.env.OPENAI_API_KEY) {
+            throw new Error('OPENAI_API_KEY is required for --enhance');
+        }
+
+        try {
+            markdown = await enhanceExecutiveSummary(markdown, report, assessment, {
+                ...reportOptions,
+                model: options.enhanceModel || undefined
+            });
+            writeStdoutLine('Executive summary enhanced via OpenAI');
+        } catch (error) {
+            console.error(paint(`Warning: AI enhancement failed — using deterministic executive summary (${error.message})`, 'yellow'));
+        }
+    }
+
+    const outputPath = path.resolve(options.output || 'AUDIT_REPORT.md');
+    writeManagedFileSync(outputPath, `${markdown}\n`, {
+        force: true,
+        validators: [validateNotEmpty]
+    });
+
+    writeStdoutLine(`Audit report written to ${outputPath}`);
+    writeStdoutLine(`Gate: ${report.gate?.pass ? 'PASS' : 'FAIL'}`);
+    if (assessment?.executiveSummary?.headline) {
+        writeStdoutLine(`Headline: ${assessment.executiveSummary.headline}`);
+    }
+}
+
 async function runComplianceCommand(options) {
     const root = sanitizePath(options.path);
     const report = await loadOrRunReport(options);
-    const checklist = evaluateComplianceChecklist(report, { projectRoot: report.projectRoot || root });
+    let npmAudit = null;
+    try {
+        const { runNpmAudit } = require(path.join(root, 'server/lib/npm-audit-runner'));
+        npmAudit = runNpmAudit(root, { force: options.forceNpmAudit === true });
+    } catch {
+        npmAudit = null;
+    }
+    const checklist = evaluateComplianceChecklist(report, {
+        projectRoot: report.projectRoot || root,
+        npmAudit
+    });
     const outputPath = path.resolve(options.output || '.simplebeacon/compliance-result.json');
 
     if (options.format === 'json' || options.output) {
@@ -532,6 +666,51 @@ function runHookInstallCommand(options) {
     }
 }
 
+async function runReduceCommand(options) {
+    const root = sanitizePath(options.path);
+    const scannerFilter = options.scanner;
+    const scannerOptions = scannerFilter
+        ? {
+            [scannerFilter]: { enabled: true },
+            ...(Object.fromEntries(
+                ['build-artifacts', 'asset-consolidation', 'unused-files', 'config-management', 'dependency-health', 'environment-variables', 'data-freshness', 'data-access-patterns', 'data-privacy', 'data-lineage', 'data-consistency']
+                    .filter((id) => id !== scannerFilter)
+                    .map((id) => [id, { enabled: false }])
+            ))
+        }
+        : {};
+
+    const report = await runFileReductionScan(root, {
+        dryRun: true,
+        scanners: scannerOptions
+    });
+    const outputPath = options.output
+        || (options.format === 'json'
+            ? path.join(root, '.simplebeacon', 'file-reduction.json')
+            : path.join(root, '.simplebeacon', 'file-reduction.md'));
+    const rendered = generateFileReductionReport(report, { format: options.format });
+
+    writeManagedFileSync(outputPath, options.format === 'json' ? `${rendered}\n` : rendered, {
+        force: true,
+        validators: options.format === 'json' ? [validateJSON, validateNotEmpty] : [validateNotEmpty]
+    });
+
+    writeStdoutLine(`File reduction report written to ${outputPath}`);
+    writeStdoutLine(`Findings: ${report.summary.totalFindings} | Reclaimable: ${report.summary.reclaimableBytes} bytes`);
+    if (options.verbose) {
+        for (const [scannerId, summary] of Object.entries(report.scanners || {})) {
+            writeStdoutLine(`  ${scannerId}: ${JSON.stringify(summary)}`);
+        }
+    }
+    if (options.format === 'text') {
+        writeStdoutLine('');
+        writeStdoutLine(rendered.split('\n').slice(0, 18).join('\n'));
+        if (rendered.split('\n').length > 18) {
+            writeStdoutLine('…');
+        }
+    }
+}
+
 async function main() {
     const options = parseArgs(process.argv);
 
@@ -573,8 +752,18 @@ async function main() {
         return;
     }
 
+    if (options.command === 'report') {
+        await runReportCommand(options);
+        return;
+    }
+
     if (options.command === 'hook-install') {
         runHookInstallCommand(options);
+        return;
+    }
+
+    if (options.command === 'reduce') {
+        await runReduceCommand(options);
         return;
     }
 

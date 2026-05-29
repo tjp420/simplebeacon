@@ -139,6 +139,8 @@ npx simplebeacon init --profile cascade    # ai-platform dashboard preset
 | `simplebeacon baseline sync` | Run Jest and write pass counts to baseline |
 | `simplebeacon comment` | Post PR comment from JSON report |
 | `simplebeacon assess` | Build customer assessment JSON from scan report |
+| `simplebeacon report` | Build client-facing markdown audit (`AUDIT_REPORT.md`) |
+| `simplebeacon compliance` | Evaluate corporate safety checklist from scan report |
 | `simplebeacon hook install` | Write pre-commit or pre-push hook (Husky or `.git/hooks`) |
 
 ### Scan flags

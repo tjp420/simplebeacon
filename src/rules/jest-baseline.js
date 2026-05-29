@@ -59,50 +59,48 @@ function runCommand(cwd, command, timeoutMs = 120000) {
     });
 }
 
-async function checkJestBaseline(baseDir, options = {}) {
-    const baseline = options.baseline || {};
-    const expectedPassing = baseline.jestTestsPassing;
-    const expectedLabel = baseline.jestTestsLabel;
-    const runTests = options.runTests === true;
-    const testCommand = options.testCommand || 'npm test -- --no-coverage --passWithNoTests';
+function normalizeJestResultCache(data) {
+    if (!data || typeof data !== 'object') return null;
 
-    if (expectedPassing == null && !expectedLabel) {
-        return { checked: false, passed: true, issues: [], summary: null };
-    }
-
-    if (!runTests) {
+    if (data.summary?.testsPassed != null) {
         return {
-            checked: false,
-            passed: true,
-            skipped: true,
-            issues: [],
-            summary: null,
-            note: 'jest-baseline skipped (runTests:false) — enable runTests or pass --with-jest'
+            testsPassed: data.summary.testsPassed,
+            testsTotal: data.summary.testsTotal,
+            testsFailed: data.summary.testsFailed ?? 0,
+            suitesPassed: data.summary.suitesPassed,
+            suitesTotal: data.summary.suitesTotal,
+            success: data.exitCode === 0 || data.exitCode == null,
+            generatedAt: data.generatedAt || null
         };
     }
 
-    let result;
+    if (data.numTotalTests != null) {
+        const testsFailed = data.numFailedTests ?? 0;
+        return {
+            testsPassed: data.numPassedTests ?? 0,
+            testsTotal: data.numTotalTests ?? 0,
+            testsFailed,
+            suitesPassed: data.numPassedTestSuites ?? null,
+            suitesTotal: data.numTotalTestSuites ?? null,
+            success: data.success === true && testsFailed === 0,
+            generatedAt: data.endTime ? new Date(data.endTime).toISOString() : null
+        };
+    }
+
+    return null;
+}
+
+function readJestResultCache(baseDir) {
+    const cachePath = path.join(baseDir, '.simplebeacon', 'jest-result.json');
     try {
-        result = await runCommand(baseDir, testCommand, options.timeoutMs || 120000);
-    } catch (error) {
-        return {
-            checked: true,
-            passed: false,
-            issues: [{
-                id: 'jest-baseline-exec',
-                severity: 'high',
-                type: 'Jest Baseline',
-                filePath: 'package.json',
-                count: 1,
-                description: `Jest command failed: ${error.message}`,
-                recommendedAction: 'Fix test runner or update testCommand in .simplebeacon/config.json',
-                affectedFiles: ['package.json']
-            }],
-            summary: null
-        };
+        const raw = fs.readFileSync(cachePath, 'utf8');
+        return normalizeJestResultCache(JSON.parse(raw));
+    } catch {
+        return null;
     }
+}
 
-    const summary = parseJestSummary(result.output);
+function buildJestBaselineIssues(summary, baseline, expectedPassing, expectedLabel) {
     const issues = [];
 
     if (!summary) {
@@ -116,7 +114,10 @@ async function checkJestBaseline(baseDir, options = {}) {
             recommendedAction: 'Ensure npm test prints standard Jest summary lines',
             affectedFiles: ['package.json']
         });
-    } else if (summary.testsFailed > 0 || result.code !== 0) {
+        return issues;
+    }
+
+    if (summary.testsFailed > 0) {
         issues.push({
             id: 'jest-baseline-failed',
             severity: 'high',
@@ -154,6 +155,125 @@ async function checkJestBaseline(baseDir, options = {}) {
         });
     }
 
+    return issues;
+}
+
+async function checkJestBaseline(baseDir, options = {}) {
+    const baseline = options.baseline || {};
+    const expectedPassing = baseline.jestTestsPassing;
+    const expectedLabel = baseline.jestTestsLabel;
+    const runTests = options.runTests === true;
+    const testCommand = options.testCommand || 'npx jest --config jest.config.js --no-coverage --passWithNoTests';
+
+    if (expectedPassing == null && !expectedLabel) {
+        return { checked: false, passed: true, issues: [], summary: null };
+    }
+
+    if (!runTests) {
+        const cached = readJestResultCache(baseDir);
+        if (cached && (expectedPassing != null || expectedLabel)) {
+            const summary = {
+                testsPassed: cached.testsPassed,
+                testsTotal: cached.testsTotal,
+                testsFailed: cached.testsFailed,
+                suitesPassed: cached.suitesPassed,
+                suitesTotal: cached.suitesTotal
+            };
+            const issues = cached.success
+                ? buildJestBaselineIssues(summary, baseline, expectedPassing, expectedLabel)
+                : [{
+                    id: 'jest-baseline-failed',
+                    severity: 'high',
+                    type: 'Jest Baseline',
+                    filePath: 'jest',
+                    count: cached.testsFailed || 1,
+                    description: `Cached Jest result failed — ${cached.testsPassed}/${cached.testsTotal} passed`,
+                    recommendedAction: 'Run npm test and refresh .simplebeacon/jest-result.json',
+                    affectedFiles: ['.simplebeacon/jest-result.json'],
+                    metadata: summary
+                }];
+
+            return {
+                checked: true,
+                passed: issues.length === 0,
+                fromCache: true,
+                issues,
+                summary,
+                exitCode: cached.success ? 0 : 1
+            };
+        }
+
+        return {
+            checked: false,
+            passed: true,
+            skipped: true,
+            issues: [],
+            summary: null,
+            note: 'jest-baseline skipped (runTests:false) — enable runTests, pass --with-jest, or refresh .simplebeacon/jest-result.json'
+        };
+    }
+
+    let result;
+    try {
+        result = await runCommand(baseDir, testCommand, options.timeoutMs || 120000);
+    } catch (error) {
+        return {
+            checked: true,
+            passed: false,
+            issues: [{
+                id: 'jest-baseline-exec',
+                severity: 'high',
+                type: 'Jest Baseline',
+                filePath: 'package.json',
+                count: 1,
+                description: `Jest command failed: ${error.message}`,
+                recommendedAction: 'Fix test runner or update testCommand in .simplebeacon/config.json',
+                affectedFiles: ['package.json']
+            }],
+            summary: null
+        };
+    }
+
+    const summary = parseJestSummary(result.output);
+    const issues = buildJestBaselineIssues(summary, baseline, expectedPassing, expectedLabel);
+
+    if (!summary && issues.length === 0) {
+        issues.push({
+            id: 'jest-baseline-parse',
+            severity: 'high',
+            type: 'Jest Baseline',
+            filePath: 'jest',
+            count: 1,
+            description: 'Could not parse Jest summary from test output',
+            recommendedAction: 'Ensure npm test prints standard Jest summary lines',
+            affectedFiles: ['package.json']
+        });
+    } else if (summary && summary.testsFailed > 0 && issues.length === 0) {
+        issues.push({
+            id: 'jest-baseline-failed',
+            severity: 'high',
+            type: 'Jest Baseline',
+            filePath: 'jest',
+            count: summary.testsFailed || 1,
+            description: `Jest reported failures — ${summary.testsPassed}/${summary.testsTotal} passed`,
+            recommendedAction: 'Fix failing tests before merge',
+            affectedFiles: ['tests/'],
+            metadata: summary
+        });
+    } else if (summary && result.code !== 0 && issues.length === 0) {
+        issues.push({
+            id: 'jest-baseline-failed',
+            severity: 'high',
+            type: 'Jest Baseline',
+            filePath: 'jest',
+            count: summary.testsFailed || 1,
+            description: `Jest exited with code ${result.code} — ${summary.testsPassed}/${summary.testsTotal} passed`,
+            recommendedAction: 'Fix failing tests before merge',
+            affectedFiles: ['tests/'],
+            metadata: summary
+        });
+    }
+
     const cachePath = path.join(baseDir, '.simplebeacon', 'jest-result.json');
     try {
         writeManagedFileSync(cachePath, `${JSON.stringify({
@@ -180,6 +300,8 @@ async function checkJestBaseline(baseDir, options = {}) {
 
 module.exports = {
     parseJestSummary,
+    normalizeJestResultCache,
+    readJestResultCache,
     checkJestBaseline,
     runCommand
 };

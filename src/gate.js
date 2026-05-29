@@ -2,7 +2,7 @@
  * Evaluate simplebeacon gate against configured severities.
  */
 
-const { isBlockingIssue } = require('./scan');
+const { isBlockingIssue } = require('./lib/issue-utils');
 
 function evaluateGate(report, gateConfig = {}) {
     const failOn = new Set(gateConfig.failOn || ['high']);
@@ -11,10 +11,14 @@ function evaluateGate(report, gateConfig = {}) {
     const issueSeverity = (issue) => issue.severityBand || issue.severity;
 
     const blockingIssues = rawIssues.filter(
-        (issue) => failOn.has(issueSeverity(issue)) && isBlockingIssue(issue)
+        (issue) => isBlockingIssue(issue)
+            && (issueSeverity(issue) === 'critical' || failOn.has(issueSeverity(issue)))
     );
     const warningIssues = rawIssues.filter(
-        (issue) => warnOn.has(issueSeverity(issue)) && isBlockingIssue(issue)
+        (issue) => isBlockingIssue(issue)
+            && issueSeverity(issue) !== 'critical'
+            && warnOn.has(issueSeverity(issue))
+            && !failOn.has(issueSeverity(issue))
     );
 
     return {

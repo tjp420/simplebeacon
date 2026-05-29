@@ -14,6 +14,10 @@ const CREDENTIAL_PATTERNS = [
     { id: 'jwt-token', regex: /\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, severity: 'high' },
     { id: 'slack-token', regex: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g, severity: 'high' },
     { id: 'stripe-key', regex: /\b(sk|pk)_(test|live)_[A-Za-z0-9]{16,}\b/g, severity: 'high' },
+    { id: 'database-url', regex: /(?:postgres|postgresql|mysql|mongodb(?:\+srv)?):\/\/[^\s'"]+:[^\s'"]+@[^\s'"]+/gi, severity: 'high' },
+    { id: 'sendgrid-key', regex: /\bSG\.[A-Za-z0-9_-]{20,}\b/g, severity: 'high' },
+    { id: 'resend-key', regex: /\bre_[A-Za-z0-9]{20,}\b/g, severity: 'high' },
+    { id: 'firebase-key', regex: /"private_key"\s*:\s*"-----BEGIN/g, severity: 'high' },
     { id: 'generic-api-key', regex: /\b(api[_-]?key|secret[_-]?key|access[_-]?token)\s*[:=]\s*['"][^'"\s]{12,}['"]/gi, severity: 'medium' },
     { id: 'bearer-token', regex: /Bearer\s+[A-Za-z0-9._-]{20,}/g, severity: 'medium' },
     { id: 'private-key-block', regex: /-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----/g, severity: 'high' }
@@ -39,6 +43,7 @@ const ALLOWLIST_SNIPPETS = [
     'secret-key-for-unit-test',
     'cascade-secret-key-2024-secure',
     'sk_test_your',
+    'sk_test_123456789',
     'pk_test_1234567890abcdef',
     'pk_test_51234567890abcdef',
     '51234567890abcdef',

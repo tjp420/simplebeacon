@@ -1,8 +1,9 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { scanTextContent, scanCredentialPatterns } = require('../src/lib/credential-pattern-scanner');
+const path = require('path');
+const { scanTextContent } = require('../src/lib/credential-pattern-scanner');
 const { scanFileContent, globMatch } = require('../src/rules/production-leak');
-const { parseJestSummary } = require('../src/rules/jest-baseline');
+const { parseJestSummary, readJestResultCache, checkJestBaseline } = require('../src/rules/jest-baseline');
 const { formatGithubComment } = require('../src/reporters/github-comment');
 const { evaluateGate } = require('../src/gate');
 const { formatTextReport, colorEnabled } = require('../src/reporters/text');
@@ -31,6 +32,12 @@ test('production-leak detects sample json reference', () => {
 test('production-leak skips comment lines', () => {
     const content = "// const x = require('./foo-sample.json');";
     const findings = scanFileContent('server/routes/users.js', content);
+    assert.equal(findings.length, 0);
+});
+
+test('production-leak ignores dev-tools page-spec metadata descriptions', () => {
+    const content = 'description: `Validates ${label} registered dashboard page-spec JSON files`';
+    const findings = scanFileContent('server/lib/dev-tools-workflows.js', content);
     assert.equal(findings.length, 0);
 });
 
@@ -131,4 +138,17 @@ test('formatTextReport renders without color when NO_COLOR set', () => {
     assert.equal(colorEnabled(), false);
     if (prev == null) delete process.env.NO_COLOR;
     else process.env.NO_COLOR = prev;
+});
+
+test('checkJestBaseline validates cached jest-result.json when runTests is false', async () => {
+    const platformRoot = path.join(__dirname, '..', '..', '..');
+    const result = await checkJestBaseline(platformRoot, {
+        baseline: { jestTestsPassing: 894, jestTestsLabel: '894/894', jestSuites: 64 },
+        runTests: false
+    });
+    assert.equal(result.checked, true);
+    assert.equal(result.fromCache, true);
+    assert.equal(result.passed, true);
+    assert.equal(result.summary?.testsPassed, 894);
+    assert.equal(result.issues.length, 0);
 });

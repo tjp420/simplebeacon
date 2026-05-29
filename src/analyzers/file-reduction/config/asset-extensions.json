@@ -1,0 +1,18 @@
+{
+  "assetExtensions": [
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".svg",
+    ".ico",
+    ".webp",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".otf"
+  ],
+  "maxFileSizeForHash": 10485760,
+  "minGroupSize": 2
+}

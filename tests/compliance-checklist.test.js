@@ -48,3 +48,16 @@ test('loadComplianceChecklist ignores evaluated output cache without check field
 
     fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('detectNpmAuditSummary passes when natural is not a dependency', () => {
+    const { detectNpmAuditSummary } = require('../src/compliance-checklist');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sb-npm-heuristic-'));
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'no-natural', dependencies: {} }));
+    fs.writeFileSync(path.join(dir, 'package-lock.json'), JSON.stringify({ packages: {} }));
+
+    const summary = detectNpmAuditSummary(dir);
+    assert.equal(summary.summary.moderate, 0);
+    assert.equal(summary.summary.total, 0);
+
+    fs.rmSync(dir, { recursive: true, force: true });
+});

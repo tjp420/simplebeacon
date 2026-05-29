@@ -18,7 +18,7 @@ async function syncJestBaseline(baseDir, options = {}) {
         || ruleOptions.testCommand
         || 'npm test -- --no-coverage --passWithNoTests';
 
-    const result = await runCommand(sanitizedBaseDir, testCommand, options.timeoutMs || 120000);
+    const result = await runCommand(sanitizedBaseDir, testCommand, options.timeoutMs || 300000);
     const summary = parseJestSummary(result.output);
 
     if (!summary) {

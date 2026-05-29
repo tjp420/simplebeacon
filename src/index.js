@@ -31,12 +31,16 @@ const { formatTextReport } = require('./reporters/text');
 const { formatJsonReport } = require('./reporters/json');
 const { formatGithubComment, formatGithubStepSummary, postGithubComment } = require('./reporters/github-comment');
 const { buildAssessmentReport } = require('./assessment');
+const { compileAuditReportMarkdown } = require('./reporters/audit-report');
+const { startGateway, createGateway } = require('./proxy/gateway');
 const { evaluateComplianceChecklist, loadComplianceChecklist } = require('./compliance-checklist');
 const {
     redactSecretsInString,
     sanitizeScanReport,
     sanitizeAssessment,
-    sanitizeReportForCloudUpload
+    sanitizeReportForCloudUpload,
+    sanitizePublicOutput,
+    applyPublicGateToAnalyzeResponse
 } = require('./lib/report-sanitizer');
 const { syncJestBaseline, verifyJestBaseline } = require('./baseline-sync');
 const { installSimplebeaconHook, buildHookScript } = require('./hook-install');
@@ -63,6 +67,9 @@ const {
     resolveCliProjectRoot
 } = require('./lib/path-utils');
 const { sanitizeFilePath } = require('./lib/input-sanitizer');
+const { runFileReductionScan } = require('./lib/file-reduction-orchestrator');
+const { generateFileReductionReport } = require('./reporters/file-reduction-report');
+const { aggregateCleanupFindings } = require('./lib/result-aggregator');
 
 function resolveMockDataScanPaths(baseDir, extraPaths = []) {
     const { platformRoot } = resolvePlatformRoot(baseDir);
@@ -195,12 +202,17 @@ module.exports = {
     formatGithubStepSummary,
     postGithubComment,
     buildAssessmentReport,
+    compileAuditReportMarkdown,
+    startGateway,
+    createGateway,
     evaluateComplianceChecklist,
     loadComplianceChecklist,
     redactSecretsInString,
     sanitizeScanReport,
     sanitizeAssessment,
     sanitizeReportForCloudUpload,
+    sanitizePublicOutput,
+    applyPublicGateToAnalyzeResponse,
     syncJestBaseline,
     verifyJestBaseline,
     installSimplebeaconHook,
@@ -223,5 +235,8 @@ module.exports = {
     resolveCliProjectRoot,
     sanitizeFilePath,
     sanitizePath,
-    PathSanitizer
+    PathSanitizer,
+    runFileReductionScan,
+    generateFileReductionReport,
+    aggregateCleanupFindings
 };

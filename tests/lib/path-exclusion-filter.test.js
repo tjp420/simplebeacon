@@ -9,6 +9,8 @@ test('shouldExcludePath blocks global defaults', () => {
     assert.equal(shouldExcludePath('dist/bundle.js'), true);
     assert.equal(shouldExcludePath('build/output.js'), true);
     assert.equal(shouldExcludePath('archive/old-code.js'), true);
+    assert.equal(shouldExcludePath('github-cache/microsoft-pyrit/package.json'), true);
+    assert.equal(shouldExcludePath('deliverables/vendor-handoff/manifest.json'), true);
 });
 
 test('shouldExcludePath allows normal source files', () => {

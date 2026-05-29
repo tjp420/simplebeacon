@@ -175,7 +175,10 @@ function buildAuditLayers(report = {}, baseline = {}) {
             passed: report.roadmapSchemaPassed ?? 0,
             duplicateGroups: report.duplicateGroups ?? 0,
             severity: 'medium',
-            status: (report.duplicateGroups ?? 0) === 0 ? 'pass' : 'warn'
+            status: (report.roadmapSchemaPassed ?? 0) >= (report.roadmapSchemaChecked ?? 0)
+                && (report.duplicateGroups ?? 0) === 0
+                ? 'pass'
+                : 'fail'
         },
         jestBaseline: {
             enabled: Boolean(baseline.jestTestsLabel),

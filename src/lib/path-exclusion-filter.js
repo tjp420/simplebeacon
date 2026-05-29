@@ -7,7 +7,16 @@
  */
 function shouldExcludePath(filePath, userExclusions = []) {
   // 1. Core global defaults to prevent scanning system noise
-  const globalDefaults = ['node_modules', '.git', 'coverage', 'dist', 'build', 'archive'];
+  const globalDefaults = [
+    'node_modules',
+    '.git',
+    'coverage',
+    'dist',
+    'build',
+    'archive',
+    'github-cache',
+    'deliverables'
+  ];
   
   // 2. Combine defaults with any custom exclusions from simplebeacon.json
   const activeExclusions = [...globalDefaults, ...userExclusions];

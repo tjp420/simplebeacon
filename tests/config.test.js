@@ -7,11 +7,10 @@ const {
     loadSimplebeaconConfig,
     getInitTemplates,
     mergeBaseline,
-    PROFILE_RULES,
     resolveScanPaths
 } = require('../src/config');
 const { validateConfig } = require('../src/config-schema');
-const { detectProjectProfile, isCascadeMonorepo, resolvePlatformRoot } = require('../src/project-detect');
+const { detectProjectProfile, resolvePlatformRoot } = require('../src/project-detect');
 const { initSimplebeacon } = require('../src/index');
 
 const AI_PLATFORM = path.join(__dirname, '../../..');
@@ -47,7 +46,11 @@ test('initSimplebeacon creates config in empty directory', () => {
 });
 
 test('loadSimplebeaconConfig auto-detects cascade profile', () => {
-    const config = loadSimplebeaconConfig(AI_PLATFORM);
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'truthcheck-cascade-'));
+    fs.mkdirSync(path.join(tmp, 'web', 'data'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'web', 'dashboard-new.html'), '<!-- cascade layout -->');
+
+    const config = loadSimplebeaconConfig(tmp);
     assert.equal(config.profile, 'cascade');
     assert.ok(Array.isArray(config.productionPaths));
 });
