@@ -2,8 +2,9 @@
 
 **Stop AI-generated fake data from slipping into production.**
 
-[![npm version](https://img.shields.io/npm/v/simplebeacon)](https://www.npmjs.com/package/simplebeacon)
+[![npm](https://img.shields.io/badge/npm-not%20published%20yet-lightgrey)](https://www.npmjs.com/package/simplebeacon)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![GitHub](https://img.shields.io/github/stars/tjp420/simplebeacon?style=social)](https://github.com/tjp420/simplebeacon)
 
 GitHub Copilot, Cursor, and other AI assistants often generate placeholder data that looks real. Simplebeacon scans your codebase and **fails CI** when mock metrics, dummy URLs, or demo credentials try to ship.
 
@@ -34,8 +35,13 @@ Simplebeacon scans source and sample data, then gates on:
 - **Schema drift** — sample JSON that violates your page specs
 
 ```bash
-npx simplebeacon init
-npx simplebeacon scan --gate
+# Until npm publish: install from GitHub
+npx --yes github:tjp420/simplebeacon init
+npx --yes github:tjp420/simplebeacon scan --gate
+
+# After npm publish (coming soon):
+# npx simplebeacon init
+# npx simplebeacon scan --gate
 ```
 
 Exit code `1` when blocking severities are found — wire it into CI and pre-commit hooks.
@@ -43,9 +49,9 @@ Exit code `1` when blocking severities are found — wire it into CI and pre-com
 ## 30-second setup
 
 ```bash
-npx simplebeacon init                  # creates .simplebeacon/config.json
-npx simplebeacon scan --gate           # scan + fail on high-severity issues
-npx simplebeacon hook install          # optional: block bad commits locally
+npx --yes github:tjp420/simplebeacon init                  # creates .simplebeacon/config.json
+npx --yes github:tjp420/simplebeacon scan --gate           # scan + fail on high-severity issues
+npx --yes github:tjp420/simplebeacon hook install          # optional: block bad commits locally
 ```
 
 For credentials + production-leak only: `npx simplebeacon init --profile minimal`

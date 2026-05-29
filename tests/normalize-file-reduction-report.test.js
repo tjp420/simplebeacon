@@ -19,7 +19,7 @@ test('isStaleFileReductionScan detects github-cache pollution', () => {
 });
 
 test('normalizeFileReductionReport strips benchmark-cache findings from stale export', () => {
-    const reportPath = 'j:/Downloads/file-reduction-c-users-trevor-cascadeprojects-ai-platform-2026-05-29.json';
+    const reportPath = '/tmp/file-reduction-example-export.json';
     if (!fs.existsSync(reportPath)) {
         return;
     }

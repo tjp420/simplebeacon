@@ -100,7 +100,7 @@ test('EnvironmentVariableAnalyzer skips phase-2 SSO example keys', async () => {
 test('EnvironmentVariableAnalyzer skips optional store keys with code defaults', async () => {
     const root = makeTempProject({
         '.env': 'PORT=3000\n',
-        'server/lib/sales-commission-store.js': "const p = process.env.SIMPLEBEACON_SALES_COMMISSIONS_STORE || '.simplebeacon/sales-commissions.json';\n"
+        'server/lib/commission-store.js': "const p = process.env.SIMPLEBEACON_SALES_COMMISSIONS_STORE || '.simplebeacon/commissions.json';\n"
     });
     const inventory = await walkProjectFiles(root);
     const scanner = new EnvironmentVariableAnalyzer();

@@ -20,8 +20,8 @@ test('recomputes gate and quality from platform-only issues (stale full-tree met
     };
     const report = {
         type: 'simplebeacon-report',
-        projectRoot: 'C:/Users/Trevor/CascadeProjects/ai-platform',
-        scanPaths: ['C:/Users/Trevor/CascadeProjects/ai-platform'],
+        projectRoot: '/tmp/example-ai-platform',
+        scanPaths: ['/tmp/example-ai-platform'],
         mockSampleFiles: 35481,
         repositoryFilesTotal: 69421,
         qualityScore: 100,
