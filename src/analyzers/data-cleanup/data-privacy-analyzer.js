@@ -26,28 +26,57 @@ const PII_PATTERNS = [
 
 const SCANNABLE_EXTENSIONS = new Set(['.json', '.js', '.mjs', '.cjs', '.ts', '.tsx', '.env', '.yaml', '.yml', '.csv', '.md']);
 
+function isDocumentationPath(relativePath) {
+    const normalized = String(relativePath || '').replace(/\\/g, '/');
+    return /^docs\//i.test(normalized) || /MOCK_DATA_GUIDE\.md$/i.test(normalized);
+}
+
+function isCommentOrDocLine(line) {
+    return /^\s*(\/\/|#|\*)/.test(String(line || ''));
+}
+
+function confidenceScoreForPattern(patternId) {
+    if (patternId === 'ssn-pattern') return 0.9;
+    if (patternId === 'credit-card') return 0.85;
+    return 0.5;
+}
+
 function scanPiiContent(relativePath, content) {
+    if (isDocumentationPath(relativePath)) {
+        return [];
+    }
+
     const findings = [];
-    for (const pattern of PII_PATTERNS) {
-        pattern.regex.lastIndex = 0;
-        let match = pattern.regex.exec(content);
-        while (match) {
-            const snippet = content.slice(Math.max(0, match.index - 20), match.index + match[0].length + 20).toLowerCase();
-            if (pattern.allowSubstrings.some((allowed) => snippet.includes(allowed.toLowerCase()))) {
-                match = pattern.regex.exec(content);
-                continue;
+    const lines = String(content || '').split('\n');
+
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        const line = lines[lineIndex];
+        if (isCommentOrDocLine(line)) continue;
+
+        for (const pattern of PII_PATTERNS) {
+            pattern.regex.lastIndex = 0;
+            let match = pattern.regex.exec(line);
+            while (match) {
+                const snippet = line.slice(Math.max(0, match.index - 20), match.index + match[0].length + 20).toLowerCase();
+                if (pattern.allowSubstrings.some((allowed) => snippet.includes(allowed.toLowerCase()))) {
+                    match = pattern.regex.exec(line);
+                    continue;
+                }
+                findings.push({
+                    type: 'data-privacy',
+                    path: relativePath,
+                    reason: `Possible ${pattern.id.replace(/-/g, ' ')} in data file`,
+                    severity: pattern.id === 'ssn-pattern' ? 'high' : 'medium',
+                    confidence: 'medium',
+                    action: 'remove-or-tokenize-pii',
+                    metadata: {
+                        patternId: pattern.id,
+                        line: lineIndex + 1,
+                        confidenceScore: confidenceScoreForPattern(pattern.id)
+                    }
+                });
+                match = pattern.regex.exec(line);
             }
-            const line = content.slice(0, match.index).split('\n').length;
-            findings.push({
-                type: 'data-privacy',
-                path: relativePath,
-                reason: `Possible ${pattern.id.replace(/-/g, ' ')} in data file`,
-                severity: pattern.id === 'ssn-pattern' ? 'high' : 'medium',
-                confidence: 'medium',
-                action: 'remove-or-tokenize-pii',
-                metadata: { patternId: pattern.id, line }
-            });
-            match = pattern.regex.exec(content);
         }
     }
     return findings;
