@@ -43,7 +43,9 @@ const { compileAuditReportMarkdown } = require('../src/reporters/audit-report');
 const { enhanceExecutiveSummary } = require('../src/reporters/report-enhance');
 const { runFileReductionScan } = require('../src/lib/file-reduction-orchestrator');
 const { generateFileReductionReport } = require('../src/reporters/file-reduction-report');
-const VALID_COMMANDS = new Set(['scan', 'init', 'comment', 'baseline-sync', 'assess', 'compliance', 'report', 'hook-install', 'reduce']);
+const { readGateStatus } = require('../src/lib/snippet-scanner');
+const { installDeveloperStack } = require('../src/lib/developer-onboarding');
+const VALID_COMMANDS = new Set(['scan', 'init', 'comment', 'baseline-sync', 'assess', 'compliance', 'report', 'hook-install', 'reduce', 'gate-status']);
 
 function writeStdoutLine(message = '') {
     process.stdout.write(`${message}\n`);
@@ -61,6 +63,11 @@ function parseArgs(argv) {
 
     if (command === 'hook' && args[1] === 'install') {
         command = 'hook-install';
+        flagStart = 2;
+    }
+
+    if (command === 'gate' && args[1] === 'status') {
+        command = 'gate-status';
         flagStart = 2;
     }
 
@@ -95,7 +102,12 @@ function parseArgs(argv) {
         force: false,
         enhance: false,
         enhanceModel: null,
-        scanner: null
+        scanner: null,
+        checklist: null,
+        withMcp: false,
+        mcpMode: 'npx-local',
+        withCi: false,
+        starter: false
     };
 
     for (let i = flagStart; i < args.length; i += 1) {
@@ -158,6 +170,18 @@ function parseArgs(argv) {
             options.enhanceModel = args[++i];
         } else if (arg === '--scanner' && args[i + 1]) {
             options.scanner = args[++i];
+        } else if (arg === '--checklist' && args[i + 1]) {
+            options.checklist = args[++i];
+        } else if (arg === '--with-mcp') {
+            options.withMcp = true;
+        } else if (arg === '--with-ci') {
+            options.withCi = true;
+        } else if (arg === '--starter') {
+            options.starter = true;
+            options.withMcp = true;
+            options.withCi = true;
+        } else if (arg === '--mcp-mode' && args[i + 1]) {
+            options.mcpMode = args[++i];
         } else if (arg === '--help' || arg === '-h') {
             options.help = true;
         }
@@ -210,6 +234,7 @@ Usage:
   simplebeacon report [options]   Build client-facing markdown audit from scan JSON
   simplebeacon baseline sync      Run Jest and update .simplebeacon/baseline.json
   simplebeacon hook install         Install pre-commit or pre-push git hook
+  simplebeacon gate status            Print gate pass/fail from .simplebeacon/report.json
   simplebeacon reduce [options]     Analyze repo for file-reduction opportunities (dry-run)
 
 Init options:
@@ -217,6 +242,10 @@ Init options:
   --profile <name>    Force profile: minimal, standard, cascade (auto-detected by default)
   --dry-run           Preview init changes without writing files
   --force             Overwrite existing config/baseline (backup created first)
+  --with-mcp          Write .cursor/mcp.json + agent rule for Cursor MCP
+  --with-ci           Write .github/workflows/simplebeacon.yml
+  --starter           Shorthand for --with-mcp --with-ci
+  --mcp-mode MODE     npx-local (default) | npx-github | monorepo
 
 Scan options:
   --path <dir>        Project root (default: cwd)
@@ -244,6 +273,7 @@ Assess options:
   --output <file>     Write assessment JSON (default: .simplebeacon/assessment.json)
   --company <name>    Customer / repo name for report title
   --assessor <name>   Your name on the deliverable
+  --checklist <id>    Checklist profile: default | eu-ai-act (default: default)
 
 Report options:
   --path <dir>        Project root (default: cwd)
@@ -278,6 +308,10 @@ Profiles:
   minimal    credentials + production-leak only
   standard   all rules with generic defaults
   cascade    ai-platform dashboard preset
+  eu-ai-act  standard + EU AI Act pattern scan (August 2026 readiness)
+
+Compliance options:
+  --checklist <id>    Checklist profile: default | eu-ai-act
 
 Examples:
   npx simplebeacon init
@@ -286,10 +320,11 @@ Examples:
   npx simplebeacon scan --offline --gate
   npx simplebeacon scan --format json --output .simplebeacon/report.json --gate
   npx simplebeacon scan --format json --api-token sb_xxx --upload https://simplebeacon.ai/api/simplebeacon/cloud-scan
-  npx simplebeacon assess --company "Acme" --assessor "Jane"
+  npx simplebeacon assess --company "Acme" --assessor "Jane" --checklist eu-ai-act
   npx simplebeacon report --company "Acme LLC" --client "Acme Dashboard" --assessor "Jane"
   npx simplebeacon report --company "Acme LLC" --client "Acme Dashboard" --enhance
-  npx simplebeacon compliance --format json --output .simplebeacon/compliance.json
+  npx simplebeacon compliance --checklist eu-ai-act --format json --output .simplebeacon/compliance.json
+  npx simplebeacon init --profile eu-ai-act
   npx simplebeacon baseline sync
   npx simplebeacon hook install
   npx simplebeacon reduce
@@ -467,9 +502,10 @@ async function runAssessCommand(options) {
         company: options.company || path.basename(root),
         assessor: options.assessor || '',
         projectRoot: report.projectRoot || root,
+        checklistProfile: options.checklist || undefined,
         commandsRun: [
             'npx simplebeacon scan --format json --output .simplebeacon/report.json --gate',
-            `npx simplebeacon assess --company "${options.company || path.basename(root)}"${options.assessor ? ` --assessor "${options.assessor}"` : ''}`
+            `npx simplebeacon assess --company "${options.company || path.basename(root)}"${options.assessor ? ` --assessor "${options.assessor}"` : ''}${options.checklist ? ` --checklist ${options.checklist}` : ''}`
         ]
     });
 
@@ -571,7 +607,8 @@ async function runComplianceCommand(options) {
     }
     const checklist = evaluateComplianceChecklist(report, {
         projectRoot: report.projectRoot || root,
-        npmAudit
+        npmAudit,
+        checklistProfile: options.checklist || undefined
     });
     const outputPath = path.resolve(options.output || '.simplebeacon/compliance-result.json');
 
@@ -636,6 +673,38 @@ function runInitCommand(options) {
     writeStdoutLine('  npx simplebeacon scan --gate');
     writeStdoutLine('  npx simplebeacon hook install');
     writeStdoutLine('  npx simplebeacon baseline sync   # after a green test run');
+
+    const onboarding = options.withMcp || options.withCi || options.starter;
+    if (onboarding) {
+        const stack = installDeveloperStack(root, {
+            mode: options.mcpMode,
+            force: options.force,
+            dryRun: options.dryRun,
+            withMcp: options.withMcp || options.starter,
+            withCursorRule: options.withMcp || options.starter,
+            withCi: options.withCi || options.starter
+        });
+
+        writeStdoutLine('');
+        if (stack.mcp?.created) {
+            writeStdoutLine(`Created ${stack.mcp.configPath} (MCP mode: ${stack.mcp.mode})`);
+        } else if (stack.mcp?.skipped) {
+            writeStdoutLine(stack.mcp.message);
+        }
+        if (stack.cursorRule?.created) {
+            writeStdoutLine(`Created ${stack.cursorRule.path}`);
+        } else if (stack.cursorRule?.skipped) {
+            writeStdoutLine(`Skipped existing ${stack.cursorRule.path}`);
+        }
+        if (stack.ciWorkflow?.created) {
+            writeStdoutLine(`Created ${stack.ciWorkflow.path}`);
+        } else if (stack.ciWorkflow?.skipped) {
+            writeStdoutLine(`Skipped existing ${stack.ciWorkflow.path}`);
+        }
+        if (options.withMcp || options.starter) {
+            writeStdoutLine('Reload Cursor → Settings → MCP → enable simplebeacon');
+        }
+    }
 }
 
 function runHookInstallCommand(options) {
@@ -711,6 +780,37 @@ async function runReduceCommand(options) {
     }
 }
 
+function runGateStatusCommand(options) {
+    const root = resolveCliProjectRoot(options.path);
+    const status = readGateStatus(root, {
+        reportPath: options.report ? path.relative(root, path.resolve(root, options.report)) : undefined
+    });
+
+    if (options.format === 'json') {
+        writeStdoutLine(JSON.stringify(status, null, 2));
+        process.exit(status.ok && status.gatePass ? 0 : 1);
+    }
+
+    if (!status.ok) {
+        writeStdoutLine(status.error);
+        writeStdoutLine(`Report path: ${status.reportPath}`);
+        process.exit(1);
+    }
+
+    writeStdoutLine(`Gate: ${status.gatePass ? 'PASS' : 'REVIEW'}`);
+    writeStdoutLine(`Report: ${status.reportPath} (${status.generatedAt || 'unknown time'})`);
+    writeStdoutLine(`Blocking: ${status.blockingCount} · Warnings: ${status.warningCount} · Fail on: ${status.failOn.join(', ')}`);
+    if (status.hint) writeStdoutLine(status.hint);
+    if (status.topBlocking.length) {
+        writeStdoutLine('');
+        writeStdoutLine('Top blocking:');
+        for (const issue of status.topBlocking) {
+            writeStdoutLine(`  [${issue.severity}] ${issue.type}: ${issue.description}`);
+        }
+    }
+    process.exit(status.gatePass ? 0 : 1);
+}
+
 async function main() {
     const options = parseArgs(process.argv);
 
@@ -764,6 +864,11 @@ async function main() {
 
     if (options.command === 'reduce') {
         await runReduceCommand(options);
+        return;
+    }
+
+    if (options.command === 'gate-status') {
+        runGateStatusCommand(options);
         return;
     }
 

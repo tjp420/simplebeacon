@@ -9,11 +9,12 @@ function scanOutboundText(text, options = {}) {
     }
 
     const credentialFindings = scanTextContent('outbound-prompt.txt', text, OUTBOUND_VIRTUAL_PATH);
-    const leakFindings = scanFileContent(OUTBOUND_VIRTUAL_PATH, text, {
-        severityBand: 'high'
+    const leakResult = scanFileContent(OUTBOUND_VIRTUAL_PATH, text, {
+        severityBand: 'high',
+        intentClassification: false
     });
 
-    const findings = [...credentialFindings, ...leakFindings];
+    const findings = [...credentialFindings, ...leakResult.findings];
     const blocked = findings.some((issue) => {
         const band = issue.severityBand || issue.severity;
         return band === 'critical' || band === 'high' || issue.severity === 'high';

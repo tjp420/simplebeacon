@@ -1,0 +1,68 @@
+# EU AI Act readiness — copy to .github/workflows/simplebeacon-eu-ai-act.yml
+# Requires: npx simplebeacon init --profile eu-ai-act (commits .simplebeacon/config.json)
+#
+# Scans for Annex III high-risk patterns, Article 50 transparency gaps,
+# documentation completeness, human oversight, and AI decision logging.
+
+name: Simplebeacon EU AI Act
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  eu-ai-act-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: EU AI Act scan + gate
+        run: |
+          npx --yes simplebeacon scan \
+            --format json \
+            --output .simplebeacon/report.json \
+            --gate \
+            --verbose
+
+      - name: EU AI Act compliance checklist
+        run: |
+          npx --yes simplebeacon compliance \
+            --checklist eu-ai-act \
+            --format json \
+            --output .simplebeacon/eu-ai-act-compliance.json \
+            --report .simplebeacon/report.json
+
+      - name: Fail on compliance gaps (August 2026 readiness)
+        run: |
+          npx --yes simplebeacon compliance \
+            --checklist eu-ai-act \
+            --report .simplebeacon/report.json \
+            --gate
+
+      - name: Post PR summary
+        if: github.event_name == 'pull_request' && always()
+        run: |
+          echo "## EU AI Act readiness (Simplebeacon)" >> "$GITHUB_STEP_SUMMARY"
+          npx --yes simplebeacon compliance \
+            --checklist eu-ai-act \
+            --report .simplebeacon/report.json \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simplebeacon-eu-ai-act
+          path: |
+            .simplebeacon/report.json
+            .simplebeacon/eu-ai-act-compliance.json
+          if-no-files-found: ignore

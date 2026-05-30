@@ -70,6 +70,18 @@ const PROFILE_RULES = {
         'llm-slop-patterns': { enabled: true, severity: 'medium', registryCheck: false },
         'agency-handoff-patterns': { enabled: true, severity: 'medium' }
     },
+    'eu-ai-act': {
+        credentials: { enabled: true, scanProduction: true },
+        'json-schema': { enabled: true },
+        'sample-consistency': { enabled: true },
+        roadmap: { enabled: true },
+        'production-leak': { enabled: true, severity: 'high' },
+        'fiction-kpi-patterns': { enabled: true, severity: 'medium' },
+        'llm-slop-patterns': { enabled: true, severity: 'medium', registryCheck: false },
+        'agency-handoff-patterns': { enabled: true, severity: 'medium' },
+        'eu-ai-act-patterns': { enabled: true, severity: 'medium' },
+        'jest-baseline': { enabled: false, runTests: false }
+    },
     cascade: {
         credentials: { enabled: true, scanProduction: true },
         'json-schema': { enabled: true },
@@ -79,6 +91,8 @@ const PROFILE_RULES = {
             enabled: true,
             severity: 'medium',
             productionPaths: ['server/'],
+            plainSampleJson: true,
+            intentClassification: true,
             allowlistFiles: [
                 'server/lib/snapshot-seeds.js',
                 'server/lib/snapshot-resolver.js',

@@ -1,0 +1,92 @@
+{
+  "type": "simplebeacon-assessment-report",
+  "title": "Simplebeacon EU AI Act Readiness Assessment — [Company / Repo Name]",
+  "generatedAt": "2026-05-29T00:00:00.000Z",
+  "generatedBy": "Simplebeacon",
+  "assessor": "[Your name]",
+  "projectRoot": "/path/to/customer/repo",
+  "assessmentProfile": "eu-ai-act",
+  "deadline": "2026-08-02",
+  "executiveSummary": {
+    "gateResult": "PASS | FAIL",
+    "qualityScore": 0,
+    "filesScanned": 0,
+    "highIssues": 0,
+    "mediumIssues": 0,
+    "lowIssues": 0,
+    "complianceScore": 0,
+    "complianceReady": false,
+    "headline": "One sentence: e.g. 2 Annex III high-risk indicators and 3 Article 50 transparency gaps — documentation artifacts missing."
+  },
+  "euAiActSummary": {
+    "highRiskIndicators": 0,
+    "aiSystemIndicators": 0,
+    "transparencyGaps": 0,
+    "documentationArtifacts": 0,
+    "documentationFound": [],
+    "deadlineNote": "High-risk AI systems must comply with EU AI Act requirements by August 2026"
+  },
+  "findings": {
+    "euAiAct": {
+      "scanned": 0,
+      "findings": 0,
+      "severity": "high",
+      "items": [
+        {
+          "file": "server/services/hiring-scorer.js",
+          "description": "Employment or recruitment AI decision pattern (Annex III area)",
+          "recommendedAction": "Document Annex III classification, conduct FRIA, and implement high-risk system requirements"
+        }
+      ],
+      "summary": "Annex III high-risk patterns, Article 50 transparency gaps, or missing documentation."
+    },
+    "credentials": {
+      "scanned": 0,
+      "findings": 0,
+      "severity": "high",
+      "items": [],
+      "summary": "No credential patterns detected."
+    },
+    "productionLeaks": {
+      "scanned": 0,
+      "findings": 0,
+      "severity": "medium",
+      "items": [],
+      "summary": "No mock/sample path references in production directories."
+    }
+  },
+  "recommendedActions": {
+    "immediate": [
+      "Run: npx simplebeacon init --profile eu-ai-act",
+      "Conduct formal Annex III classification review with legal counsel",
+      "Add Article 50 user-facing AI disclosure to chat and generative output surfaces",
+      "Create docs/model-card.md and docs/risk-assessment.md"
+    ],
+    "beforeAugust2026": [
+      "Implement human-in-the-loop review for high-risk automated decisions",
+      "Add AI inference audit logging for accountability",
+      "Wire simplebeacon scan --gate --checklist eu-ai-act into CI",
+      "Prepare conformity documentation for notified body review if high-risk"
+    ]
+  },
+  "complementaryStack": {
+    "keepUsing": ["Legal counsel for formal conformity assessment", "Snyk for CVE posture"],
+    "addSimplebeaconFor": [
+      "Technical signal scan for Annex III high-risk patterns",
+      "Article 50 transparency gap detection in user-facing code",
+      "Documentation completeness checks before August 2026 deadline"
+    ]
+  },
+  "pilotProposal": {
+    "offer": "EU AI Act readiness audit + 30-day remediation sprint",
+    "pricePlaceholder": "$2,499–9,999 depending on AI system scope",
+    "ask": "Will you run simplebeacon scan --gate with --checklist eu-ai-act on every PR until August 2026?"
+  },
+  "disclaimer": "This assessment is a static technical pattern review — not legal advice, formal conformity assessment, or certification under Regulation (EU) 2024/1689. Client remains responsible for legal classification and regulatory compliance.",
+  "commandsRun": [
+    "npx simplebeacon init --profile eu-ai-act",
+    "npx simplebeacon scan --format json --output .simplebeacon/report.json --gate",
+    "npx simplebeacon compliance --checklist eu-ai-act --format json --output .simplebeacon/compliance-result.json",
+    "npx simplebeacon assess --company \"[Company]\" --checklist eu-ai-act"
+  ]
+}

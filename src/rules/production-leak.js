@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { classifyProductionLeakMatch } = require('../lib/production-leak-intent');
 
 const DEFAULT_PRODUCTION_PATHS = ['server/', 'src/', 'app/', 'lib/'];
 const DEFAULT_IGNORE_GLOBS = [
@@ -15,6 +16,8 @@ const DEFAULT_IGNORE_GLOBS = [
     '**/*.spec.js',
     '**/*.test.ts',
     '**/*.spec.ts',
+    '**/*.test.tsx',
+    '**/*.spec.tsx',
     'tests/**',
     'test/**'
 ];
@@ -29,6 +32,18 @@ const LEAK_PATTERNS = [
         regex: /`[^`]*(?:-sample\.json|(?:\/|\\)mock(?:\/|\\)[^`]+|(?:\/|\\)fixtures(?:\/|\\)[^`]+|web(?:\/|\\)data)[^`]*`/gi
     }
 ];
+
+const PLAIN_SAMPLE_JSON_PATTERN = {
+    id: 'plain-sample-json',
+    regex: /['"`][^'"`]*(?:\/|\\|\.\/)(?<![\w-])sample\.json(?:\?[^'"`]*)?['"`]/gi
+};
+
+function getActiveLeakPatterns(options = {}) {
+    if (!options.plainSampleJson) {
+        return LEAK_PATTERNS;
+    }
+    return [...LEAK_PATTERNS, PLAIN_SAMPLE_JSON_PATTERN];
+}
 
 const SCANNABLE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx']);
 const MAX_SCAN_BYTES = 512000;
@@ -134,7 +149,7 @@ function mapSeverityBand(relativePath, patternId) {
     if (patternId === 'sample-json' || patternId === 'web-data-sample') {
         return 'critical';
     }
-    if (patternId === 'mock-path' || patternId === 'template-sample') {
+    if (patternId === 'plain-sample-json' || patternId === 'mock-path' || patternId === 'template-sample') {
         return 'high';
     }
     return 'medium';
@@ -143,6 +158,9 @@ function mapSeverityBand(relativePath, patternId) {
 function buildRecommendation(patternId) {
     if (patternId === 'sample-json' || patternId === 'web-data-sample') {
         return 'Replace hardcoded sample data imports with measured runtime API/scanner output before release';
+    }
+    if (patternId === 'plain-sample-json') {
+        return 'Replace plain sample.json imports with live data sources or move demo defaults behind example/dev routes';
     }
     if (patternId === 'mock-path' || patternId === 'template-sample') {
         return 'Move mock-only paths behind test/dev gates and keep production paths bound to live data sources';
@@ -182,23 +200,51 @@ async function walkProductionFiles(dir, results = [], depth = 0) {
 
 function scanFileContent(relativePath, content, options = {}) {
     const findings = [];
+    const suppressed = [];
+    const intentClassification = options.intentClassification !== false;
     const fallbackSeverityBand = options.severityBand || options.severity || 'high';
     const lines = content.split('\n');
+    const patterns = getActiveLeakPatterns(options);
 
-    for (const pattern of LEAK_PATTERNS) {
+    for (const pattern of patterns) {
         pattern.regex.lastIndex = 0;
         let match;
         while ((match = pattern.regex.exec(content)) !== null) {
             const lineIndex = content.slice(0, match.index).split('\n').length - 1;
-            if (isCommentLine(lines[lineIndex] || '')) continue;
+            const line = lines[lineIndex] || '';
+            if (isCommentLine(line)) continue;
             const snippet = content.slice(Math.max(0, match.index - 12), match.index + match[0].length + 12);
             if (isLikelyConfigReference(relativePath, snippet)) continue;
             if (isProseSampleReference(match[0])) continue;
             if (isInstructionalTemplateReference(match[0])) continue;
-            const line = lineNumberAt(content, match.index);
-            const severityBand = (options.severityBand || options.severity)
-                ? fallbackSeverityBand
-                : mapSeverityBand(relativePath, pattern.id);
+
+            let intentResult = null;
+            if (intentClassification) {
+                intentResult = classifyProductionLeakMatch({
+                    relativePath,
+                    content,
+                    lineIndex,
+                    matchText: match[0],
+                    patternId: pattern.id
+                });
+                if (intentResult.suppress) {
+                    suppressed.push({
+                        filePath: relativePath,
+                        line: lineNumberAt(content, match.index),
+                        pattern: pattern.id,
+                        intent: intentResult.intent,
+                        reason: intentResult.reason,
+                        match: match[0]
+                    });
+                    continue;
+                }
+            }
+
+            const lineNum = lineNumberAt(content, match.index);
+            const severityBand = intentResult?.severityBand
+                || ((options.severityBand || options.severity)
+                    ? fallbackSeverityBand
+                    : mapSeverityBand(relativePath, pattern.id));
             const recommendation = buildRecommendation(pattern.id);
             findings.push({
                 id: `production-leak-${pattern.id}-${relativePath}-${match.index}`,
@@ -207,10 +253,10 @@ function scanFileContent(relativePath, content, options = {}) {
                 type: 'Production Leak',
                 filePath: relativePath,
                 file: relativePath,
-                line,
+                line: lineNum,
                 pattern: pattern.id,
                 count: 1,
-                description: `${relativePath}:${line} references mock/sample path (${pattern.id})`,
+                description: `${relativePath}:${lineNum} references mock/sample path (${pattern.id})`,
                 recommendation,
                 recommendedAction: recommendation,
                 affectedFiles: [path.basename(relativePath)],
@@ -218,9 +264,11 @@ function scanFileContent(relativePath, content, options = {}) {
                     patternId: pattern.id,
                     offset: match.index,
                     match: match[0],
+                    intent: intentResult?.intent || 'unclassified',
+                    intentReason: intentResult?.reason || null,
                     findingPayload: {
                         file: relativePath,
-                        line,
+                        line: lineNum,
                         pattern: pattern.id,
                         recommendation
                     }
@@ -229,7 +277,7 @@ function scanFileContent(relativePath, content, options = {}) {
         }
     }
 
-    return findings;
+    return { findings, suppressed };
 }
 
 async function scanProductionLeaks(baseDir, options = {}) {
@@ -248,6 +296,7 @@ async function scanProductionLeaks(baseDir, options = {}) {
     }
 
     const issues = [];
+    const suppressedIntent = [];
     let scanned = 0;
 
     for (const file of files) {
@@ -264,13 +313,21 @@ async function scanProductionLeaks(baseDir, options = {}) {
         }
 
         scanned += 1;
-        issues.push(...scanFileContent(relativePath, content, { severity }));
+        const result = scanFileContent(relativePath, content, {
+            severity,
+            intentClassification: options.intentClassification !== false,
+            plainSampleJson: options.plainSampleJson === true
+        });
+        issues.push(...result.findings);
+        suppressedIntent.push(...result.suppressed);
     }
 
     return {
         scanned,
         findings: issues.length,
-        issues
+        issues,
+        suppressedIntent,
+        suppressedIntentCount: suppressedIntent.length
     };
 }
 
@@ -278,6 +335,8 @@ module.exports = {
     DEFAULT_PRODUCTION_PATHS,
     DEFAULT_IGNORE_GLOBS,
     LEAK_PATTERNS,
+    PLAIN_SAMPLE_JSON_PATTERN,
+    getActiveLeakPatterns,
     scanProductionLeaks,
     scanFileContent,
     globMatch,

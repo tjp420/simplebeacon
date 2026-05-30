@@ -1,7 +1,7 @@
 {
   "name": "simplebeacon",
   "version": "1.0.0",
-  "description": "Community CLI — detect mock data, fiction KPIs, and credential leaks. Local scans, JSON + text reports, CI gate (--gate), GitHub Action + pre-commit hooks.",
+  "description": "Local release-hygiene gate for AI-assisted code — MCP snippet scans, full-repo --gate for CI, credential patterns, sample JSON in prod routes, fiction KPIs. Offline by default.",
   "author": "SimpleBeacon",
   "license": "MIT",
   "homepage": "https://simplebeacon.ai/community",
@@ -20,11 +20,14 @@
   "bin": {
     "simplebeacon": "./bin/simplebeacon.js",
     "simplebeacon-proxy": "./bin/simplebeacon-proxy.js",
+    "simplebeacon-mcp": "./bin/simplebeacon-mcp.js",
     "samplebeacon": "./bin/simplebeacon.js"
   },
   "scripts": {
     "test": "node --test tests/**/*.test.js",
     "proxy": "node bin/simplebeacon-proxy.js",
+    "mcp": "node bin/simplebeacon-mcp.js --offline",
+    "mcp:smoke": "node bin/simplebeacon-mcp.js --smoke-test",
     "prepublishOnly": "npm test",
     "pack:check": "npm pack --dry-run"
   },
@@ -37,7 +40,10 @@
     "ci-gate",
     "pre-commit",
     "github-action",
-    "devsecops"
+    "devsecops",
+    "mcp",
+    "cursor",
+    "model-context-protocol"
   ],
   "engines": {
     "node": ">=16.0.0"

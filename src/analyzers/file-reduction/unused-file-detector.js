@@ -54,6 +54,8 @@ const DEFAULT_SKIP_PATH_PATTERNS = [
     /(?:^|\/)reports\//,
     /(?:^|\/)deliverables\//,
     /(?:^|\/)security-reports\//,
+    /(?:^|\/)tests-legacy(?:\/|$)/,
+    /(?:^|\/)\\.github-sync(?:\/|$)/,
     /(?:^|\/)data-central\//,
     /(?:^|\/)web\/data\//,
     /(?:^|\/)data\//,
@@ -85,7 +87,9 @@ const DEFAULT_SKIP_GLOBS = [
     '**/batch_consolidator.py',
     '**/standardized_schema.json',
     '**/complete-scan-export.json',
-    '**/complete-scan-export.enriched.json'
+    '**/complete-scan-export.enriched.json',
+    'tests-legacy/**',
+    '.github-sync/**'
 ];
 
 const PROTECTED_RUNTIME_BASENAMES = new Set([

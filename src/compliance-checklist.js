@@ -5,6 +5,13 @@
 const fs = require('fs');
 const path = require('path');
 const DEFAULT_CHECKLIST = require('./compliance-checklist.defaults.json');
+const EU_AI_ACT_CHECKLIST = require('./compliance-checklist.eu-ai-act.defaults.json');
+
+const CHECKLIST_PROFILES = {
+    default: DEFAULT_CHECKLIST,
+    corporate: DEFAULT_CHECKLIST,
+    'eu-ai-act': EU_AI_ACT_CHECKLIST
+};
 
 function isEvaluatedChecklistOutput(custom) {
     const customRules = Array.isArray(custom?.rules) ? custom.rules : [];
@@ -32,24 +39,30 @@ function mergeChecklistRules(customRules, defaultRules) {
     }).filter((rule) => rule.check);
 }
 
-function loadComplianceChecklist(projectRoot) {
-    if (!projectRoot) return DEFAULT_CHECKLIST;
+function resolveChecklistBase(options = {}) {
+    const profile = options.checklistProfile || options.profile || 'default';
+    return CHECKLIST_PROFILES[profile] || DEFAULT_CHECKLIST;
+}
+
+function loadComplianceChecklist(projectRoot, options = {}) {
+    const baseChecklist = resolveChecklistBase(options);
+    if (!projectRoot) return baseChecklist;
     const customPath = path.join(path.resolve(projectRoot), '.simplebeacon', 'compliance-checklist.json');
-    if (!fs.existsSync(customPath)) return DEFAULT_CHECKLIST;
+    if (!fs.existsSync(customPath)) return baseChecklist;
     try {
         const custom = JSON.parse(fs.readFileSync(customPath, 'utf8'));
-        const defaultRules = DEFAULT_CHECKLIST.rules || [];
+        const defaultRules = baseChecklist.rules || [];
         const customRules = Array.isArray(custom.rules) ? custom.rules : [];
         const rules = isEvaluatedChecklistOutput(custom)
             ? defaultRules
             : mergeChecklistRules(customRules, defaultRules);
         return {
-            ...DEFAULT_CHECKLIST,
+            ...baseChecklist,
             ...custom,
             rules: rules.length ? rules : defaultRules
         };
     } catch {
-        return DEFAULT_CHECKLIST;
+        return baseChecklist;
     }
 }
 
@@ -304,6 +317,98 @@ function evaluateRule(rule, context) {
                 evidence: productionProfile.reason
             };
         }
+        case 'eu-ai-act-high-risk-reviewed': {
+            const summary = report.euAiActSummary;
+            if (report.euAiActScanned == null && !summary) {
+                return { ...base, status: 'skip', evidence: 'EU AI Act scan not run — enable eu-ai-act-patterns rule' };
+            }
+            const highRisk = summary?.highRiskIndicators ?? 0;
+            const docs = summary?.documentationArtifacts ?? 0;
+            if (highRisk === 0) {
+                return { ...base, status: 'pass', evidence: 'No Annex III high-risk AI patterns detected in scanned paths' };
+            }
+            const ok = docs > 0;
+            return {
+                ...base,
+                status: ok ? 'pass' : 'fail',
+                evidence: ok
+                    ? `${highRisk} high-risk indicator(s) with ${docs} documentation artifact(s) — review classification`
+                    : `${highRisk} high-risk indicator(s) without documentation — add risk-assessment and conformity docs`
+            };
+        }
+        case 'eu-ai-act-transparency': {
+            const summary = report.euAiActSummary;
+            if (report.euAiActScanned == null && !summary) {
+                return { ...base, status: 'skip', evidence: 'EU AI Act scan not run — enable eu-ai-act-patterns rule' };
+            }
+            const gaps = summary?.transparencyGaps ?? 0;
+            const aiHits = summary?.aiSystemIndicators ?? 0;
+            if (aiHits === 0 && gaps === 0) {
+                return { ...base, status: 'pass', evidence: 'No generative AI integrations detected in user-facing paths' };
+            }
+            const ok = gaps === 0;
+            return {
+                ...base,
+                status: ok ? 'pass' : 'fail',
+                evidence: ok
+                    ? `${aiHits} AI integration(s) with Article 50 disclosure markers present`
+                    : `${gaps} transparency gap(s) — add AI-generated / AI interaction disclosure in UI`
+            };
+        }
+        case 'eu-ai-act-documentation': {
+            const summary = report.euAiActSummary;
+            if (report.euAiActScanned == null && !summary) {
+                return { ...base, status: 'skip', evidence: 'EU AI Act scan not run — enable eu-ai-act-patterns rule' };
+            }
+            const aiHits = (summary?.aiSystemIndicators ?? 0) + (summary?.highRiskIndicators ?? 0);
+            const docs = summary?.documentationArtifacts ?? 0;
+            if (aiHits === 0) {
+                return { ...base, status: 'pass', evidence: 'No AI system indicators — documentation not required by scan' };
+            }
+            const ok = docs >= 2;
+            return {
+                ...base,
+                status: ok ? 'pass' : 'fail',
+                evidence: ok
+                    ? `${docs} documentation artifact(s) found for ${aiHits} AI indicator(s)`
+                    : `${aiHits} AI indicator(s) but only ${docs} doc artifact(s) — add model-card and technical documentation`
+            };
+        }
+        case 'eu-ai-act-human-oversight': {
+            const gaps = (report.rawIssues || []).filter((issue) =>
+                /human oversight gap/i.test(String(issue.type || ''))
+            ).length;
+            const highRisk = report.euAiActSummary?.highRiskIndicators ?? 0;
+            if (highRisk === 0) {
+                return { ...base, status: 'pass', evidence: 'No high-risk AI patterns — human oversight rule not applicable' };
+            }
+            const ok = gaps === 0;
+            return {
+                ...base,
+                status: ok ? 'pass' : 'fail',
+                evidence: ok
+                    ? `${highRisk} high-risk indicator(s) with human oversight signals in code`
+                    : `${gaps} file(s) with high-risk AI but no human oversight markers`
+            };
+        }
+        case 'eu-ai-act-logging': {
+            const gaps = (report.rawIssues || []).filter((issue) =>
+                /logging gap/i.test(String(issue.type || ''))
+            ).length;
+            const aiHits = (report.euAiActSummary?.aiSystemIndicators ?? 0)
+                + (report.euAiActSummary?.highRiskIndicators ?? 0);
+            if (aiHits === 0) {
+                return { ...base, status: 'pass', evidence: 'No AI decision paths detected' };
+            }
+            const ok = gaps === 0;
+            return {
+                ...base,
+                status: ok ? 'pass' : 'fail',
+                evidence: ok
+                    ? 'AI decision paths include audit/logging signals'
+                    : `${gaps} AI decision path(s) without logging markers — add inference audit trail`
+            };
+        }
         default:
             return { ...base, status: 'skip', evidence: `Unknown check: ${rule.check}` };
     }
@@ -311,7 +416,9 @@ function evaluateRule(rule, context) {
 
 function evaluateComplianceChecklist(report, options = {}) {
     const projectRoot = options.projectRoot || report.projectRoot || '';
-    const checklist = options.checklist || loadComplianceChecklist(projectRoot);
+    const checklist = options.checklist || loadComplianceChecklist(projectRoot, {
+        checklistProfile: options.checklistProfile
+    });
     const context = buildEvaluationContext(report, options);
     const rules = (checklist.rules || []).map((rule) => evaluateRule(rule, context));
 
@@ -335,10 +442,16 @@ function evaluateComplianceChecklist(report, options = {}) {
             total: rules.length,
             score,
             readyForAutomation: failed === 0 && passed > 0,
+            checklistProfile: options.checklistProfile
+                || (checklist.extends === 'corporate-safety' ? 'eu-ai-act' : 'default'),
             headline: failed === 0 && passed > 0
-                ? `${passed}/${scored} applicable rules pass — safe to enable automated AI deploy gates`
+                ? checklist.extends === 'corporate-safety' || options.checklistProfile === 'eu-ai-act'
+                    ? `${passed}/${scored} EU AI Act readiness rules pass — review legal classification before August 2026`
+                    : `${passed}/${scored} applicable rules pass — safe to enable automated AI deploy gates`
                 : failed > 0
-                    ? `${failed} rule(s) fail — fix before handing operations to AI-generated code`
+                    ? options.checklistProfile === 'eu-ai-act' || checklist.extends === 'corporate-safety'
+                        ? `${failed} EU AI Act rule(s) fail — address before August 2026 deadline`
+                        : `${failed} rule(s) fail — fix before handing operations to AI-generated code`
                     : skipped === rules.length
                         ? 'Checklist not evaluated — stale compliance output was ignored; re-run assess or compliance'
                         : 'No scored rules — review scan report manually'
@@ -353,5 +466,8 @@ module.exports = {
     evaluateRule,
     detectNpmAuditSummary,
     detectProductionAuthProfile,
-    DEFAULT_CHECKLIST
+    resolveChecklistBase,
+    DEFAULT_CHECKLIST,
+    EU_AI_ACT_CHECKLIST,
+    CHECKLIST_PROFILES
 };

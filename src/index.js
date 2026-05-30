@@ -238,5 +238,11 @@ module.exports = {
     PathSanitizer,
     runFileReductionScan,
     generateFileReductionReport,
-    aggregateCleanupFindings
+    aggregateCleanupFindings,
+    createMcpToolHandlers: require('./mcp/tools').createMcpToolHandlers,
+    TOOL_DEFINITIONS: require('./mcp/tools').TOOL_DEFINITIONS,
+    createMcpStdioServer: require('./mcp/stdio-server').createMcpStdioServer,
+    scanSnippetContent: require('./lib/snippet-scanner').scanSnippetContent,
+    scanFileOnDisk: require('./lib/snippet-scanner').scanFileOnDisk,
+    readGateStatus: require('./lib/snippet-scanner').readGateStatus
 };

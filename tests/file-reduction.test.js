@@ -112,6 +112,22 @@ test('UnusedFileDetector skips vendor and archive paths', async () => {
     assert.equal(paths.includes('temp/scratch.js'), false);
 });
 
+test('UnusedFileDetector skips tests-legacy and .github-sync mirror trees', async () => {
+    const root = makeTempProject({
+        'package.json': JSON.stringify({ main: 'index.js' }),
+        'index.js': "require('./lib/helper');\n",
+        'lib/helper.js': 'module.exports = () => 1;\n',
+        'tests-legacy/python/orphan_test.py': 'def test_x():\n    pass\n',
+        '.github-sync/simplebeacon/bin/orphan.js': 'module.exports = {};\n'
+    });
+
+    const scanner = new UnusedFileDetector();
+    const result = await scanner.scan(root);
+    const paths = result.findings.map((f) => f.path);
+    assert.equal(paths.includes('tests-legacy/python/orphan_test.py'), false);
+    assert.equal(paths.includes('.github-sync/simplebeacon/bin/orphan.js'), false);
+});
+
 test('UnusedFileDetector treats scripts and package bins as entry points', async () => {
     const root = makeTempProject({
         'package.json': JSON.stringify({ main: 'index.js' }),

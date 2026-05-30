@@ -8,15 +8,17 @@ Use this document for website copy, README, and sales material. Each claim maps 
 
 ### 1. Mock data leaking into production code
 
-**Claim:** Detects hardcoded references to `-sample.json`, mock/fixture paths, and `web/data` in production directories.
+**Claim:** Detects runtime `require`/`import`/`fetch`/`readFile` loads of `-sample.json`, `web/data`, mock/fixture paths, and (cascade profile) bare `sample.json` in production directories.
 
 | | |
 |---|---|
-| **Rule** | `production-leak` |
+| **Rule** | `production-leak` + `lib/production-leak-intent.js` |
 | **Scans** | `server/`, `src/`, `app/`, `lib/` (configurable) |
-| **Severity** | high/medium (profile-dependent) |
+| **Severity** | critical for `-sample.json` / `web/data`; high for mock/fixture paths |
 | **Verify** | `npx simplebeacon scan --verbose` → Production files scanned |
-| **Caveat** | Intentional seed files should be allowlisted (`allowlistFiles` in config) |
+| **Snyk gap** | Dependency/CVE scanners do not flag static JSON imports in route handlers — validated on OSS repos (May 2026) |
+| **Suppressions** | Repository-audit catalogs, stub loaders, and demo paths (`example/`, `tools/`, `applets/`, `*.test.*`) |
+| **Caveat** | Intentional seed files should be allowlisted (`allowlistFiles` in config). `plainSampleJson` is cascade-only by default — do not enable on generic OSS without suppressions |
 
 ---
 
@@ -106,7 +108,7 @@ Use this document for website copy, README, and sales material. Each claim maps 
 |---------|---------------|------------------|----------|
 | `minimal` | credentials, production-leak | none | Any Node repo, quick start |
 | `standard` | all rules | generic fiction list | External projects with samples |
-| `cascade` | all + allowlists | cascade fiction list | ai-platform monorepo |
+| `cascade` | all + allowlists + `plainSampleJson` | cascade fiction list | ai-platform monorepo / agency handoff |
 
 ---
 
@@ -133,7 +135,7 @@ cd ai-platform && npm run simplebeacon:full
 
 ## One-liner (approved)
 
-> **Simplebeacon gates CI on mock-data leaks in production code, credential patterns, JSON schema drift, and fiction KPIs in sample files.**
+> **Simplebeacon gates CI on mock-data leaks in production code (`*-sample.json`, `web/data`), credential patterns, JSON schema drift, and fiction KPIs in sample files — the hygiene layer Snyk does not cover.**
 
 ## Elevator pitch (approved)
 

@@ -64,6 +64,9 @@ Scans production code for hardcoded mock/sample paths.
 - `/mock/`, `/fixtures/` paths
 - `web/data` references
 - Template literals containing sample/mock paths
+- Optional `plainSampleJson`: bare `sample.json` imports/fetches (cascade profile only by default)
+
+**Suppresses (intent classification):** repository-audit catalogs, stub loaders, and demo paths (`example/`, `tools/`, `applets/`, `*.test.*`).
 
 **Skips:** comment lines, webpack/jest config files, simplebeacon allowlisted files
 
@@ -73,6 +76,8 @@ Scans production code for hardcoded mock/sample paths.
   "enabled": true,
   "severity": "high",
   "productionPaths": ["src/", "server/"],
+  "plainSampleJson": false,
+  "intentClassification": true,
   "allowlistFiles": ["server/lib/seeds.js"]
 }
 ```

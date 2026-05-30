@@ -1,0 +1,38 @@
+---
+description: Simplebeacon MCP scan workflow — snippet, file, and gate checks (local-only)
+alwaysApply: true
+---
+
+# Simplebeacon scan workflow
+
+When the **simplebeacon** MCP server is available, follow this three-phase loop. All scans are local; do not upload source.
+
+## 1. While coding (before accepting generated edits)
+
+Call **`scan_snippet`** with:
+- `content` — the proposed code block
+- `filePath` — target path (e.g. `src/api/handler.ts`)
+
+If `blockingCount > 0` or high-severity findings appear, fix fiction KPIs, mock/sample paths, credentials, or LLM placeholders before applying the edit. Use **`explain_finding`** with the returned `pattern` id when the fix is unclear.
+
+## 2. After editing a file (on save / end of edit)
+
+Call **`scan_file`** with:
+- `filePath` — path relative to project root
+
+Surface any new findings to the user. Tune allowlists in `.simplebeacon/config.json` only for confirmed false positives.
+
+## 3. Before PR / merge
+
+Run the authoritative full-repo gate (terminal or CI):
+
+```bash
+npx simplebeacon scan --gate --offline --format json --output .simplebeacon/report.json
+npx simplebeacon gate status
+```
+
+Then call MCP **`gate_status`** to summarize blocking issues for the user.
+
+**MCP snippet/file tools = fast feedback.** **CLI `--gate` = source of truth** for cross-file consistency and CI.
+
+Never brag about raw finding counts; focus on gate-blocking issues.

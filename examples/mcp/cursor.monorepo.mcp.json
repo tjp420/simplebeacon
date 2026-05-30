@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "simplebeacon": {
+      "command": "node",
+      "args": ["packages/simplebeacon-cli/bin/simplebeacon-mcp.js", "--offline"],
+      "env": {
+        "SIMPLEBEACON_PROJECT_ROOT": "${workspaceFolder}",
+        "SIMPLEBEACON_OFFLINE": "1"
+      }
+    }
+  }
+}

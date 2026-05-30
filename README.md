@@ -1,16 +1,16 @@
 # Simplebeacon
 
-**Stop AI-generated fake data from slipping into production.**
+**Release hygiene for AI-assisted code** — local MCP + CLI gate. No repo upload required.
 
-[![npm](https://img.shields.io/badge/npm-not%20published%20yet-lightgrey)](https://www.npmjs.com/package/simplebeacon)
+[![npm version](https://img.shields.io/npm/v/simplebeacon.svg)](https://www.npmjs.com/package/simplebeacon)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/github/stars/tjp420/simplebeacon?style=social)](https://github.com/tjp420/simplebeacon)
 
 GitHub Copilot, Cursor, and other AI assistants often generate placeholder data that looks real. Simplebeacon scans your codebase and **fails CI** when mock metrics, dummy URLs, or demo credentials try to ship.
 
-**Community ($0):** unlimited local scans · JSON + text reports · gate policy (`--gate`) · GitHub Actions + pre-commit hooks · zero runtime dependencies · local-only by default.
+**Community ($0):** MCP snippet scans · full-repo `--gate` · GitHub Actions · zero extra MCP deps · `--offline` by default.
 
-Hosted dashboard and cloud sync: [simplebeacon.ai](https://simplebeacon.ai) (Cloud Teams / Enterprise).
+Install guide: [simplebeacon.ai/community](https://simplebeacon.ai/community)
 
 ## The problem
 
@@ -35,13 +35,9 @@ Simplebeacon scans source and sample data, then gates on:
 - **Schema drift** — sample JSON that violates your page specs
 
 ```bash
-# Until npm publish: install from GitHub
-npx --yes github:tjp420/simplebeacon init
-npx --yes github:tjp420/simplebeacon scan --gate
-
-# After npm publish (coming soon):
-# npx simplebeacon init
-# npx simplebeacon scan --gate
+npx --yes simplebeacon init --starter
+npx simplebeacon scan --gate --offline
+npx simplebeacon gate status
 ```
 
 Exit code `1` when blocking severities are found — wire it into CI and pre-commit hooks.
@@ -49,10 +45,12 @@ Exit code `1` when blocking severities are found — wire it into CI and pre-com
 ## 30-second setup
 
 ```bash
-npx --yes github:tjp420/simplebeacon init                  # creates .simplebeacon/config.json
-npx --yes github:tjp420/simplebeacon scan --gate           # scan + fail on high-severity issues
-npx --yes github:tjp420/simplebeacon hook install          # optional: block bad commits locally
+npx --yes simplebeacon init --starter
+npx simplebeacon-mcp --smoke-test
+npx simplebeacon scan --gate --offline
 ```
+
+**Full guide:** [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) · **MCP:** [docs/MCP-USER-SETUP.md](docs/MCP-USER-SETUP.md) · **Calibration:** [docs/GATE-CALIBRATION.md](docs/GATE-CALIBRATION.md)
 
 For credentials + production-leak only: `npx simplebeacon init --profile minimal`
 
@@ -70,7 +68,7 @@ Copy [examples/github-action/simplebeacon.yml](examples/github-action/simplebeac
 
 Full workflow with PR summary, artifacts, and gate options: [docs/GITHUB-ACTION-QUICKSTART.md](docs/GITHUB-ACTION-QUICKSTART.md)
 
-Forum launch copy: [docs/LAUNCH-TEMPLATE.md](docs/LAUNCH-TEMPLATE.md)
+**Positioning guide (no copy-paste scripts):** [docs/LAUNCH-TEMPLATE.md](docs/LAUNCH-TEMPLATE.md)
 
 **Anti-bloat manifesto:** [docs/ANTI-BLOAT-MANIFESTO.md](docs/ANTI-BLOAT-MANIFESTO.md) · [Benchmarks](docs/BENCHMARKS.md)
 
@@ -97,6 +95,31 @@ Simplebeacon scans your codebase and **fails CI** when fiction tries to ship.
 - **No telemetry**: The community CLI does not phone home or collect usage data
 
 See [docs/TRUST.md](docs/TRUST.md) for architecture, data flow, and verification steps.
+
+## Docker (code never leaves your host)
+
+Build once from the monorepo root:
+
+```bash
+docker build -f docker/Dockerfile.cli -t simplebeacon/cli .
+```
+
+Scan a repo read-only (Linux/macOS):
+
+```bash
+docker run --rm \
+  -v "$(pwd):/repo:ro" \
+  -v "$(pwd)/.simplebeacon:/out" \
+  simplebeacon/cli scan --path /repo --format json --output /out/report.json --gate --offline
+```
+
+Windows PowerShell:
+
+```powershell
+docker run --rm -v "${PWD}:/repo:ro" -v "${PWD}/.simplebeacon:/out" simplebeacon/cli scan --path /repo --format json --output /out/report.json --gate --offline
+```
+
+Mount `:ro` on source; only the output directory is written. Pair with the Findings Explorer at `/findings/` to browse large JSON reports locally.
 
 ## Safety Features
 
@@ -148,6 +171,17 @@ npx simplebeacon init --profile cascade    # ai-platform dashboard preset
 | `simplebeacon report` | Build client-facing markdown audit (`AUDIT_REPORT.md`) |
 | `simplebeacon compliance` | Evaluate corporate safety checklist from scan report |
 | `simplebeacon hook install` | Write pre-commit or pre-push hook (Husky or `.git/hooks`) |
+| `simplebeacon-mcp` | MCP stdio server for Cursor / Claude Desktop (local scan tools) |
+
+### MCP (IDE integration)
+
+Real-time snippet and file checks during development — **no upload**:
+
+```bash
+node bin/simplebeacon-mcp.js --offline
+```
+
+Tools: `scan_snippet`, `scan_file`, `gate_status`, `explain_finding`. See [docs/MCP.md](docs/MCP.md) and `examples/mcp/cursor.mcp.json`.
 
 ### Scan flags
 
@@ -180,7 +214,7 @@ npx simplebeacon init --profile cascade    # ai-platform dashboard preset
 
 See [docs/RULES.md](docs/RULES.md) and [docs/CONFIG.md](docs/CONFIG.md).
 
-**Go-to-market:** [docs/OUTREACH.md](docs/OUTREACH.md) · [Assessment report template](docs/examples/assessment-report-template.json) · [Production leak triage](docs/PRODUCTION-LEAK-TRIAGE.md)
+**Go-to-market:** [docs/OUTREACH.md](docs/OUTREACH.md) · [Assessment report template](docs/examples/assessment-report-template.json) · [EU AI Act assessment template](docs/examples/eu-ai-act-assessment-template.json) · [EU AI Act GitHub Action](examples/github-action/simplebeacon-eu-ai-act.yml) · [Production leak triage](docs/PRODUCTION-LEAK-TRIAGE.md)
 
 ## Complementary stack
 
@@ -224,6 +258,7 @@ Copy [examples/starter/.simplebeacon/](examples/starter/.simplebeacon/) into you
 
 ## Documentation
 
+- [Security scan architecture](../../docs/security-scan-architecture.md) (monorepo: CLI + dashboard flow, codemap trace 1)
 - [Configuration](docs/CONFIG.md)
 - [Trust & privacy](docs/TRUST.md)
 - [Pre-commit hooks](docs/PRE-COMMIT.md)

@@ -18,6 +18,7 @@ const { scanProductionLeaks } = require('./rules/production-leak');
 const { scanSourceFictionPatterns } = require('./rules/fiction-kpi-patterns');
 const { scanLlmSlopPatterns } = require('./rules/llm-slop-patterns');
 const { scanAgencyHandoffPatterns } = require('./rules/agency-handoff-patterns');
+const { scanEuAiActPatterns } = require('./rules/eu-ai-act-patterns');
 const { checkJestBaseline } = require('./rules/jest-baseline');
 const { loadSimplebeaconConfig, resolveScanPaths, isRuleEnabled, getRuleOptions } = require('./config');
 const { resolvePlatformRoot, isIsolatedScanRoot } = require('./project-detect');
@@ -404,8 +405,13 @@ async function scanMockDataDirectories(baseDir, extraPaths = [], options = {}) {
             productionPaths: leakOpts.productionPaths || config.productionPaths,
             ignoreGlobs: leakOpts.ignoreGlobs || config.ignore,
             allowlistFiles: leakOpts.allowlistFiles || [],
-            scannerMetaFiles: config.scannerMetaFiles || [],
-            severity: leakOpts.severity || 'high'
+            scannerMetaFiles: [
+                ...(config.scannerMetaFiles || []),
+                ...(leakOpts.scannerMetaFiles || [])
+            ],
+            severity: leakOpts.severity || 'high',
+            intentClassification: leakOpts.intentClassification !== false,
+            plainSampleJson: leakOpts.plainSampleJson === true
         });
         issues.push(...productionLeakScan.issues);
     }
@@ -454,6 +460,18 @@ async function scanMockDataDirectories(baseDir, extraPaths = [], options = {}) {
             severity: handoffOpts.severity || 'medium'
         });
         issues.push(...agencyHandoffScan.issues);
+    }
+
+    let euAiActScan = { scanned: 0, findings: 0, issues: [], summary: null, patterns: [] };
+    if (isRuleEnabled(config, 'eu-ai-act-patterns')) {
+        const euOpts = getRuleOptions(config, 'eu-ai-act-patterns');
+        euAiActScan = await scanEuAiActPatterns(root, {
+            sourcePaths: euOpts.sourcePaths || config.sourceCodeScanPaths,
+            productionPaths: euOpts.productionPaths || config.productionPaths,
+            ignoreGlobs: euOpts.ignoreGlobs || config.ignore,
+            severity: euOpts.severity || 'medium'
+        });
+        issues.push(...euAiActScan.issues);
     }
 
     let jestBaseline = { checked: false, passed: true, issues: [], summary: null };
@@ -529,6 +547,9 @@ async function scanMockDataDirectories(baseDir, extraPaths = [], options = {}) {
         sourceFictionPatternHits: sourceFictionScan.findings,
         llmSlopFilesScanned: llmSlopScan.scanned,
         llmSlopPatternHits: llmSlopScan.findings,
+        euAiActFilesScanned: euAiActScan.scanned,
+        euAiActPatternHits: euAiActScan.findings,
+        euAiActHighRiskIndicators: euAiActScan.summary?.highRiskIndicators ?? 0,
         jestExecutedDuringScan: jestBaseline.checked === true,
         consistencyAnchorCount: (config.consistencyAnchorSamples || []).length,
         fictionScope: consistency.scope || 'repository-json',
@@ -599,10 +620,14 @@ async function scanMockDataDirectories(baseDir, extraPaths = [], options = {}) {
         credentialFindings: credentialScan.findings,
         productionLeakScanned: productionLeakScan.scanned,
         productionLeakFindings: productionLeakScan.findings,
+        productionLeakSuppressedIntent: productionLeakScan.suppressedIntentCount || 0,
         sourceCodeFilesScanned: sourceFictionScan.scanned,
         sourceFictionPatternHits: sourceFictionScan.findings,
         llmSlopFilesScanned: llmSlopScan.scanned,
         llmSlopPatternHits: llmSlopScan.findings,
+        euAiActScanned: euAiActScan.scanned,
+        euAiActFindings: euAiActScan.findings,
+        euAiActSummary: euAiActScan.summary,
         jestBaselineChecked: jestBaseline.checked,
         jestBaselinePassed: jestBaseline.passed,
         jestSummary: jestBaseline.summary || null,

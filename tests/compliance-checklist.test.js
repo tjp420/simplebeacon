@@ -61,3 +61,28 @@ test('detectNpmAuditSummary passes when natural is not a dependency', () => {
 
     fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('evaluateComplianceChecklist eu-ai-act profile evaluates EU rules', () => {
+    const evaluated = evaluateComplianceChecklist({
+        projectRoot: '/tmp/repo',
+        gate: { pass: true },
+        credentialFindings: 0,
+        credentialScanned: 1,
+        productionLeakFindings: 0,
+        productionLeakScanned: 1,
+        euAiActScanned: 10,
+        euAiActFindings: 0,
+        euAiActSummary: {
+            highRiskIndicators: 0,
+            aiSystemIndicators: 0,
+            transparencyGaps: 0,
+            documentationArtifacts: 0
+        },
+        rawIssues: []
+    }, { checklistProfile: 'eu-ai-act' });
+
+    assert.equal(evaluated.title, 'Simplebeacon EU AI Act Readiness Checklist');
+    assert.ok(evaluated.rules.some((r) => r.id === 'EUAI-001'));
+    assert.equal(evaluated.rules.find((r) => r.id === 'EUAI-001').status, 'pass');
+    assert.match(evaluated.summary.headline, /EU AI Act readiness/);
+});

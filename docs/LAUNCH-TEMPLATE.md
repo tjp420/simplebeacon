@@ -1,87 +1,66 @@
-# Launch templates — AI fake data detection
+# Simplebeacon positioning (internal)
 
-Use these when posting to Reddit, Hacker News, Dev.to, Indie Hackers, or AI tool communities.
-
-Replace `[repo-url]` with your public GitHub or npm link before posting.
+**Do not copy-paste forum scripts.** Write in your own voice. Link to the GitHub repo and Docker one-liner.
 
 ---
 
-## Reddit / Dev.to (problem-first)
+## What we are
 
-**Title:** Tired of AI assistants generating fake data that slips into production?
+Deterministic static analysis for **AI-assisted development risks**: fiction KPIs in sample JSON, mock paths wired into production code, credential patterns, schema drift.
 
-**Body:**
+**Not:** an LLM security platform, semantic code review, SOC 2 certified SaaS, or zero-false-positive magic.
 
-I built an open-source CLI that catches AI-generated mock data, dummy URLs, and fake metrics in your CI pipeline before they ship.
+**Domain note:** `simplebeacon.ai` is the marketing site and optional hosted dashboard. The product is the **local CLI** — code stays on the client's machine unless they explicitly opt into sanitized report upload.
 
-**Repo:** [repo-url]
+---
 
-**The problem:** GitHub Copilot and Cursor often generate placeholder data that developers forget to replace — inflated KPIs, `api.example.com` URLs, `-sample.json` paths wired into production code. It looks fine in review and breaks in prod.
+## Approved one-liners
 
-**What Simplebeacon catches:**
+> Simplebeacon is a local Node CLI that regex-scans your repo for AI-placeholder data and production leaks. Runs in CI, Docker, or air-gapped — no source upload required.
 
-- Hardcoded fiction KPIs (`completion_rate: 98.5`, `user_count: 47`)
-- Mock/sample paths referenced from production code
-- Demo credentials and token-like strings
-- Sample JSON that drifts from your baseline
+> We catch the blind spot between Copilot/Cursor placeholders and your release gate — deterministic rules, tunable allowlists, honest false-positive tradeoffs.
 
-**Setup (~30 seconds):**
+---
+
+## Do NOT claim
+
+- "AI Safety platform" (use: **release hygiene for AI-assisted code**)
+- Raw issue counts as a flex (4,000 hits on a public OSS repo = noisy rules, not quality)
+- SOC 2 / ISO compliance without certification
+- Zero false positives
+- That scanning requires sending us your repo (default is **client-run CLI**)
+
+---
+
+## Primary delivery model (2026)
+
+| Model | Who runs scan | Code location |
+|-------|---------------|---------------|
+| **CLI in client CI** (default) | Client | Client runner / Docker |
+| **Docker on client VPC** | Client ops | Client infrastructure |
+| **Consultant PDF** (optional) | Client runs CLI; shares JSON report only | Never required to send source |
+
+Legacy ZIP-to-founder workflow is **deprecated** — do not lead with it in sales or site copy.
+
+---
+
+## Install commands (public)
 
 ```bash
-npx simplebeacon init
-npx simplebeacon scan --gate
+npx --yes simplebeacon init --starter
+npx --yes simplebeacon scan --gate --offline
 ```
 
-Add `.github/workflows/simplebeacon.yml` from the repo examples — fails the job when high-severity issues are found. Local-only by default; no telemetry.
-
-Has anyone else hit this? How are you catching AI placeholders today?
-
----
-
-## Hacker News (Show HN)
-
-**Title:** Show HN: Simplebeacon – CI gate for AI-generated fake metrics and mock data in prod code
-
-**Body:**
-
-Simplebeacon is a local-first CLI that scans repos for fiction KPIs, mock data paths in production code, and credential patterns, then fails CI when `--gate` finds blocking issues.
-
-Built after one too many `-sample.json` references and `98.5% completion` metrics making it past review when Copilot/Cursor filled in placeholders.
-
-- `npx simplebeacon init && npx simplebeacon scan --gate`
-- GitHub Action example in repo
-- MIT, zero runtime deps, offline mode available
-
-[repo-url]
-
-Looking for feedback on detection rules and false-positive tuning.
+```bash
+docker build -f docker/Dockerfile.cli -t simplebeacon/cli .
+docker run --rm -v "$(pwd):/repo:ro" -v "$(pwd)/.simplebeacon:/out" \
+  simplebeacon/cli scan --path /repo --format json --output /out/report.json --offline
+```
 
 ---
 
-## Short tweet / Discord
+## Findings UI
 
-AI keeps shipping fake KPIs and mock JSON paths into our repos. I open-sourced a CI gate for it: fiction metrics, prod→mock leaks, credential patterns. `npx simplebeacon scan --gate` — [repo-url]
+Built with Next.js + TanStack Table + virtualization at `/findings/` — load local JSON; no upload.
 
----
-
-## Target communities
-
-| Channel | Notes |
-|---------|--------|
-| r/webdev, r/javascript, r/programming | Lead with the problem, not the product name |
-| Hacker News Show HN | Technical, ask for feedback on rules |
-| Dev.to | Include GitHub Action snippet |
-| Indie Hackers | Emphasize zero-cost community tier |
-| Cursor / Copilot forums | Mention specific failure modes (sample paths, fake %) |
-
----
-
-## Pre-post checklist
-
-- [ ] Repo is public with focused README
-- [ ] `examples/github-action/simplebeacon.yml` committed
-- [ ] Run `npx simplebeacon scan --gate` locally on a clean branch (exit 0)
-- [ ] Have one screenshot or JSON report snippet ready if asked
-- [ ] Reply plan for "how is this different from Snyk/Semgrep?" → complementary: fiction KPIs + mock paths, not CVEs
-
-See also [OUTREACH.md](./OUTREACH.md) for assessment and customer deliverable workflow.
+Build: `npm run findings:build` from `ai-platform/`.

@@ -11,11 +11,12 @@ const VALID_RULES = new Set([
     'fiction-kpi-patterns',
     'llm-slop-patterns',
     'agency-handoff-patterns',
+    'eu-ai-act-patterns',
     'jest-baseline'
 ]);
 
 const VALID_SEVERITIES = new Set(['critical', 'high', 'medium', 'low']);
-const VALID_PROFILES = new Set(['minimal', 'standard', 'cascade']);
+const VALID_PROFILES = new Set(['minimal', 'standard', 'cascade', 'eu-ai-act']);
 
 function validateConfig(config) {
     const errors = [];

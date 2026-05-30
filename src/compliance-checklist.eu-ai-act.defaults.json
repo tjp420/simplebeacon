@@ -1,0 +1,80 @@
+{
+  "version": "1.0.0",
+  "title": "Simplebeacon EU AI Act Readiness Checklist",
+  "description": "Automated technical signals for EU AI Act readiness — August 2026 deadline. Static scan only; not legal advice.",
+  "extends": "corporate-safety",
+  "rules": [
+    {
+      "id": "GATE-001",
+      "check": "gate-pass",
+      "title": "Merge gate passes on configured severities",
+      "category": "Automation",
+      "severity": "critical",
+      "remediation": "Fix blocking findings and re-run: npx simplebeacon scan --gate"
+    },
+    {
+      "id": "CRED-001",
+      "check": "zero-credential-findings",
+      "title": "No credential or secret patterns in scanned paths",
+      "category": "Security",
+      "severity": "critical",
+      "remediation": "Remove secrets from the repo, rotate exposed credentials, add patterns to .gitignore"
+    },
+    {
+      "id": "LEAK-001",
+      "check": "zero-production-leaks",
+      "title": "No mock/sample JSON paths referenced from production directories",
+      "category": "Data integrity",
+      "severity": "high",
+      "remediation": "Replace hardcoded *-sample.json paths with repository-audit APIs or env-based config"
+    },
+    {
+      "id": "EUAI-001",
+      "check": "eu-ai-act-high-risk-reviewed",
+      "title": "High-risk AI indicators documented or absent",
+      "category": "EU AI Act — Classification",
+      "severity": "critical",
+      "remediation": "Conduct Annex III classification review; add risk-assessment.md and conformity documentation for high-risk systems"
+    },
+    {
+      "id": "EUAI-002",
+      "check": "eu-ai-act-transparency",
+      "title": "Article 50 transparency — AI outputs disclosed to users",
+      "category": "EU AI Act — Transparency",
+      "severity": "high",
+      "remediation": "Add user-facing disclosure that content is AI-generated or that users interact with an AI system"
+    },
+    {
+      "id": "EUAI-003",
+      "check": "eu-ai-act-documentation",
+      "title": "AI system documentation present when AI integrations detected",
+      "category": "EU AI Act — Documentation",
+      "severity": "high",
+      "remediation": "Add model-card.md, technical documentation, and risk assessment artifacts under docs/ or .simplebeacon/"
+    },
+    {
+      "id": "EUAI-004",
+      "check": "eu-ai-act-human-oversight",
+      "title": "Human oversight signals for high-risk AI decision paths",
+      "category": "EU AI Act — Human oversight",
+      "severity": "high",
+      "remediation": "Implement human-in-the-loop review, manual override, or appeal mechanism for automated decisions"
+    },
+    {
+      "id": "EUAI-005",
+      "check": "eu-ai-act-logging",
+      "title": "AI decision logging for accountability",
+      "category": "EU AI Act — Record-keeping",
+      "severity": "medium",
+      "remediation": "Log AI system inputs, outputs, and decision rationale for audit trails"
+    },
+    {
+      "id": "SUPPLY-001",
+      "check": "npm-no-critical-high",
+      "title": "No critical or high npm audit vulnerabilities",
+      "category": "Supply chain",
+      "severity": "critical",
+      "remediation": "Run npm audit fix; upgrade transitive dependencies blocking CVEs"
+    }
+  ]
+}
