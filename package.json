@@ -55,6 +55,9 @@
     "bin/",
     "src/",
     "docs/",
+    "!docs/OUTREACH.md",
+    "!docs/NPM-PUBLISH.md",
+    "!docs/examples/outreach-tracker.md",
     "examples/",
     "LICENSE",
     "README.md"
