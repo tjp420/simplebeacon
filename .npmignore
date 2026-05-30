@@ -1,0 +1,11 @@
+# Operator-only — not shipped to npm consumers (mirrors tools/sync-github-public-cli.js)
+PUBLISH.md
+publish.ps1
+scripts/
+docs/OUTREACH.md
+docs/NPM-PUBLISH.md
+docs/examples/outreach-tracker.md
+tests/
+.simplebeacon/
+*.jsonl
+simplebeacon-*.tgz

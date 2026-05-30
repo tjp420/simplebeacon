@@ -28,7 +28,7 @@
     "proxy": "node bin/simplebeacon-proxy.js",
     "mcp": "node bin/simplebeacon-mcp.js --offline",
     "mcp:smoke": "node bin/simplebeacon-mcp.js --smoke-test",
-    "prepublishOnly": "npm test",
+    "prepublishOnly": "npm test && npm run mcp:smoke",
     "pack:check": "npm pack --dry-run"
   },
   "keywords": [

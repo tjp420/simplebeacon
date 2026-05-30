@@ -16,14 +16,14 @@ function resolveMcpCommand(options = {}) {
     }
 
     if (mode === 'npx-github') {
-        // Legacy mode name — zero-install via npm (no devDependency required)
+        // Zero-install: package name is simplebeacon; bin is simplebeacon-mcp
         return {
             command: 'npx',
-            args: ['--yes', 'simplebeacon-mcp', '--offline']
+            args: ['--yes', '-p', 'simplebeacon', 'simplebeacon-mcp', '--offline']
         };
     }
 
-    // Default: devDependency / npm publish — npx resolves local bin
+    // Default: devDependency installed — npx resolves bin from node_modules/.bin
     return {
         command: 'npx',
         args: ['simplebeacon-mcp', '--offline']

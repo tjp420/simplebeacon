@@ -79,7 +79,7 @@ Or copy `examples/mcp/cursor.npx-github.mcp.json` for zero-install MCP (no `npm 
   "mcpServers": {
     "simplebeacon": {
       "command": "npx",
-      "args": ["--yes", "simplebeacon-mcp", "--offline"],
+      "args": ["--yes", "-p", "simplebeacon", "simplebeacon-mcp", "--offline"],
       "env": {
         "SIMPLEBEACON_PROJECT_ROOT": "${workspaceFolder}",
         "SIMPLEBEACON_OFFLINE": "1"

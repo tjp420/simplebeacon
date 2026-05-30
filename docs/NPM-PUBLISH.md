@@ -32,6 +32,18 @@ npm config set //registry.npmjs.org/:_authToken=npm_...
 npm publish --access public
 ```
 
+**Or publish from GitHub Actions** (after adding `NPM_TOKEN` secret on `tjp420/simplebeacon`):
+
+1. npmjs.com → Access Tokens → **Granular** → Permissions: Read and write packages, bypass 2FA if available
+2. GitHub → tjp420/simplebeacon → Settings → Secrets → Actions → `NPM_TOKEN`
+3. Actions → **Publish to npm** → Run workflow (or create a GitHub Release)
+
+Then verify locally:
+
+```powershell
+.\scripts\verify-npm-publish.ps1
+```
+
 ## Package contents
 
 Bins included: `simplebeacon`, `simplebeacon-mcp`, `simplebeacon-proxy`
