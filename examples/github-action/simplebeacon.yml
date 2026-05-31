@@ -1,47 +1,98 @@
-# Copy via: npx simplebeacon init --starter
-# Requires .simplebeacon/config.json (created by init)
-
-name: Simplebeacon
-
-on:
-  pull_request:
-  push:
-    branches: [main, master]
-
-permissions:
-  contents: read
-  pull-requests: write
-
-jobs:
-  simplebeacon:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Run Simplebeacon gate (local rules, no upload)
-        run: |
-          npx --yes simplebeacon scan \
-            --format json \
-            --output .simplebeacon/report.json \
-            --gate \
-            --offline \
-            --verbose
-          npx --yes simplebeacon gate status
-
-      - name: Post PR summary
-        if: github.event_name == 'pull_request' && always()
-        run: |
-          npx --yes simplebeacon comment \
-            --report .simplebeacon/report.json --print-only >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload report artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: simplebeacon-report
-          path: .simplebeacon/report.json
-          if-no-files-found: ignore
+# Copy via: npx simplebeacon init --starter
+# Requires .simplebeacon/config.json (created by init)
+#
+# Optional ledger ingress (Corporate Liability Firewall):
+#   Repository secrets: SIMPLEBEACON_API_URL, SIMPLEBEACON_TOKEN (x-simplebeacon-token from dashboard)
+
+name: Simplebeacon
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  simplebeacon:
+    runs-on: ubuntu-latest
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Simplebeacon gate (local rules)
+        run: |
+          npx --yes simplebeacon scan \
+            --format json \
+            --output .simplebeacon/report.json \
+            --gate \
+            --offline \
+            --verbose
+          npx --yes simplebeacon gate status
+
+      - name: Push compliance ledger to SimpleBeacon
+        if: always() && secrets.SIMPLEBEACON_TOKEN != '' && secrets.SIMPLEBEACON_API_URL != ''
+        env:
+          SIMPLEBEACON_API_URL: ${{ secrets.SIMPLEBEACON_API_URL }}
+          SIMPLEBEACON_TOKEN: ${{ secrets.SIMPLEBEACON_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const reportPath = '.simplebeacon/report.json';
+          if (!fs.existsSync(reportPath)) {
+            console.log('No report file — skipping ledger ingress.');
+            process.exit(0);
+          }
+          const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+          const payload = {
+            report,
+            repository: process.env.GITHUB_REPOSITORY,
+            branch: process.env.GITHUB_REF_NAME || 'main',
+            pr_number: process.env.PR_NUMBER ? Number(process.env.PR_NUMBER) : null,
+            actor_login: 'github-actions[bot]',
+            sha: process.env.GITHUB_SHA
+          };
+          const base = String(process.env.SIMPLEBEACON_API_URL || '').replace(/\/+$/, '');
+          fetch(`${base}/api/compliance-trail/ingress`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-simplebeacon-token': process.env.SIMPLEBEACON_TOKEN
+            },
+            body: JSON.stringify(payload)
+          }).then(async (res) => {
+            const body = await res.text();
+            if (!res.ok) {
+              console.error('Ledger ingress failed:', res.status, body);
+              process.exit(1);
+            }
+            console.log('Ledger ingress OK:', body);
+          }).catch((err) => {
+            console.error('Ledger ingress error:', err.message);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Post PR summary
+        if: github.event_name == 'pull_request' && always()
+        run: |
+          npx --yes simplebeacon comment \
+            --report .simplebeacon/report.json --print-only >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simplebeacon-report
+          path: .simplebeacon/report.json
+          if-no-files-found: ignore
