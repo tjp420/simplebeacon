@@ -2,6 +2,8 @@
  * Text reporter for simplebeacon scan results.
  */
 
+const { liabilityMetrics } = require('../lib/liability-metrics');
+
 const COLORS = {
     reset: '\x1b[0m',
     red: '\x1b[31m',
@@ -29,7 +31,43 @@ function severityColor(severity) {
     return 'dim';
 }
 
-function formatTextReport(report, gateResult = null) {
+function formatLiabilityReportCard(report, gateResult) {
+    const metrics = liabilityMetrics(report, gateResult);
+    const lines = [];
+    lines.push(paint('Corporate liability snapshot (local smoke detector)', 'cyan'));
+    lines.push('--------------------------------------------------------');
+    lines.push(`AI slop pattern hits: ${metrics.slopHits}${metrics.slopFiles ? ` across ${metrics.slopFiles} file(s)` : ''}`);
+    lines.push(`Mock / sample path signals: ${metrics.mockPathHits}${metrics.mockSampleFiles ? ` · ${metrics.mockSampleFiles} mock/sample file(s) in scope` : ''}`);
+    lines.push(`Fiction KPI / placeholder findings: ${metrics.fictionKpis + metrics.placeholderHits}`);
+    lines.push(`Production leak signals: ${metrics.productionLeaks}`);
+    lines.push(`Un-audited AI artifacts (estimate): ${paint(String(metrics.unauditedArtifacts), metrics.unauditedArtifacts > 0 ? 'red' : 'green')}`);
+    if (metrics.qualityScore != null) {
+        lines.push(`Quality score: ${metrics.qualityScore}/100`);
+    }
+    if (gateResult) {
+        lines.push(gateResult.pass
+            ? paint('Merge gate: PASS (local rules only — not a legal attestation)', 'green')
+            : paint(`Merge gate: FAIL — ${metrics.blockingCount} blocking issue(s) would stop CI`, 'red'));
+    }
+    lines.push('');
+    return lines;
+}
+
+function formatEnterpriseUpsell(metrics) {
+    const count = metrics.unauditedArtifacts;
+    const noun = count === 1 ? 'artifact' : 'artifacts';
+    return [
+        paint('[!] Corporate Liability Firewall', 'yellow'),
+        count > 0
+            ? `Found ${count} un-audited AI ${noun} in this repository.`
+            : 'No unaudited AI artifacts detected in this scan — ledger upload still records human-oversight evidence.',
+        'To append an immutable cryptographic ledger block and export audit-ready documentation for your CRO, run:',
+        paint('  simplebeacon upload --tier=enterprise --api-token sb_…', 'cyan'),
+        `Dashboard: ${process.env.SIMPLEBEACON_APP_URL || 'https://simplebeacon.ai'}/app#/compliance-trail`
+    ].join('\n');
+}
+
+function formatTextReport(report, gateResult = null, options = {}) {
     const lines = [];
     lines.push(paint('Simplebeacon', 'cyan'));
     lines.push('==================');
@@ -38,11 +76,9 @@ function formatTextReport(report, gateResult = null) {
         lines.push(`Repository files: ${report.repositoryFilesTotal.toLocaleString()}`);
     }
     lines.push(`Gate rules checked: ${report.ruleScopedFilesAnalyzed ?? report.filesAnalyzed ?? report.totalFiles} files`);
-    if (report.mockSampleFiles != null) {
-        lines.push(`Mock/sample files: ${report.mockSampleFiles}`);
-    }
-    lines.push(`Quality score: ${report.qualityScore}/100`);
     lines.push('');
+
+    lines.push(...formatLiabilityReportCard(report, gateResult));
 
     const counts = report.severityCounts || {};
     lines.push(
@@ -62,25 +98,24 @@ function formatTextReport(report, gateResult = null) {
     }
     lines.push('');
 
-    if (gateResult) {
-        lines.push(gateResult.pass ? paint('Gate: PASS', 'green') : paint('Gate: FAIL', 'red'));
-        lines.push('');
-    }
-
     const issues = report.rawIssues || [];
     if (issues.length === 0) {
-        lines.push(paint('No issues detected.', 'green'));
-        return lines.join('\n');
+        lines.push(paint('No rule violations detected.', 'green'));
+    } else {
+        lines.push('Top findings:');
+        for (const issue of issues.slice(0, 50)) {
+            const label = `[${issue.severity}] ${issue.type}`;
+            lines.push(`  ${paint(label, severityColor(issue.severity))}: ${issue.description}`);
+        }
+
+        if (issues.length > 50) {
+            lines.push(`  ... and ${issues.length - 50} more`);
+        }
     }
 
-    lines.push('Issues:');
-    for (const issue of issues.slice(0, 50)) {
-        const label = `[${issue.severity}] ${issue.type}`;
-        lines.push(`  ${paint(label, severityColor(issue.severity))}: ${issue.description}`);
-    }
-
-    if (issues.length > 50) {
-        lines.push(`  ... and ${issues.length - 50} more`);
+    if (!options.noUpsell) {
+        lines.push('');
+        lines.push(formatEnterpriseUpsell(liabilityMetrics(report, gateResult)));
     }
 
     return lines.join('\n');
@@ -88,6 +123,8 @@ function formatTextReport(report, gateResult = null) {
 
 module.exports = {
     formatTextReport,
+    formatLiabilityReportCard,
+    formatEnterpriseUpsell,
     paint,
     colorEnabled
 };

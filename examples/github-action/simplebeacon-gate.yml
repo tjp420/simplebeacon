@@ -1,0 +1,47 @@
+# Zero-install PR gate — copy to .github/workflows/simplebeacon-gate.yml
+# No repo config required; uses npx simplebeacon-audit (full rule engine, not heuristics).
+#
+# Optional secrets (ledger + dashboard):
+#   SIMPLEBEACON_API_URL — e.g. https://simplebeacon.ai
+#   SIMPLEBEACON_TOKEN   — Cloud Teams x-simplebeacon-token (sb_…)
+
+name: SimpleBeacon Corporate Liability Firewall
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  compliance-hygiene-check:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_REF_NAME: ${{ github.ref_name }}
+      GITHUB_SHA: ${{ github.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@v4
+
+      - name: Initialize Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Execute SimpleBeacon static audit (PR gate)
+        env:
+          SIMPLEBEACON_TOKEN: ${{ secrets.SIMPLEBEACON_TOKEN }}
+          SIMPLEBEACON_API_URL: ${{ secrets.SIMPLEBEACON_API_URL }}
+        run: |
+          npx --yes simplebeacon-audit --path=. --fail-on-slop --ci-ledger
+
+      - name: Upload scan artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simplebeacon-gate-report
+          path: .simplebeacon/report.json
+          if-no-files-found: ignore
