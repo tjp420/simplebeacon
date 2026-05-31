@@ -18,7 +18,8 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "simplebeacon": "./bin/simplebeacon.js",`n    "simplebeacon-audit": "./bin/simplebeacon-audit.js",
+    "simplebeacon": "./bin/simplebeacon.js",
+    "simplebeacon-audit": "./bin/simplebeacon-audit.js",
     "simplebeacon-proxy": "./bin/simplebeacon-proxy.js",
     "simplebeacon-mcp": "./bin/simplebeacon-mcp.js",
     "samplebeacon": "./bin/simplebeacon.js"
